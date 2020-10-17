@@ -1,4 +1,12 @@
-print("edmcoverlay2: lib loaded")
+import logging
+from pathlib import Path
+
+from config import appname
+
+plugin_name = Path(__file__).parent.name
+logger = logging.getLogger(f"{appname}.{plugin_name}")
+
+logger.debug("edmcoverlay2: lib loaded")
 
 import errno
 import json
@@ -25,12 +33,12 @@ class Overlay:
             return cls._instance
 
     def __init__(self, server="127.0.0.1", port=5020):
-        print("edmcoverlay2: hiiiiiii")
+        logger.info("edmcoverlay2: hiiiiiii")
         with self._lock:
             if self._initialised:
-                print("edmcoverlay2: skipping init")
+                logger.debug("edmcoverlay2: skipping init")
                 return
-            print("edmcoverlay2: init")
+            logger.debug("edmcoverlay2: init")
             self._initialised = True
             self._host = server
             self._port = port
@@ -43,7 +51,7 @@ class Overlay:
     def __updater(self):
         timestep = 1
         global _stopping
-        print("edmcoverlay2: updater running")
+        logger.info("edmcoverlay2: updater running")
         had_overlays = False
         while not _stopping:
             time.sleep(timestep)
@@ -75,15 +83,15 @@ class Overlay:
                 conn.close()
             except socket.error as e:
                 if e.errno == errno.ECONNREFUSED:
-                    print("edmcoverlay2: conn refused")
+                    logger.warning("edmcoverlay2: conn refused")
                 else:
                     raise
-        print("edmcoverlay2: updater stopping")
+        logger.info("edmcoverlay2: updater stopping")
 
     def __server(self):
         # Pretend to be the EDMCOverlay server.
         global _stopping
-        print("edmcoverlay2: server running")
+        logger.info("edmcoverlay2: server running")
         self._sock = socket.socket()
         self._sock.bind(("127.0.0.1", 5010))
         self._sock.listen()
@@ -93,7 +101,7 @@ class Overlay:
                 sock, _ = self._sock.accept()
             except socket.timeout:
                 continue
-            print("edmcoverlay2: server got connection")
+            logger.debug("edmcoverlay2: server got connection")
             data = b""
             while True:
                 chunk = sock.recv(1024)
@@ -110,23 +118,23 @@ class Overlay:
                 msg = json.loads(data)
                 # TODO
                 self.send_raw(msg)
-        print("edmcoverlay2: server stopping")
+        logger.info("edmcoverlay2: server stopping")
 
     def _stop(self):
         global _stopping
-        print("edmcoverlay2: stopping client threads")
+        logger.info("edmcoverlay2: stopping client threads")
         _stopping = True
         if self._server is not None and self._server.is_alive():
-            print("edmcoverlay2: waiting for server to stop")
+            logger.info("edmcoverlay2: waiting for server to stop")
             self._server.join()
         if self._updater is not None and self._updater.is_alive():
-            print("edmcoverlay2: waiting for updater to stop")
+            logger.info("edmcoverlay2: waiting for updater to stop")
             self._updater.join()
-        print("edmcoverlay2: all client threads stopped")
+        logger.info("edmcoverlay2: all client threads stopped")
 
     def send_raw(self, msg):
         # TODO
-        print("edmcoverlay2: send_raw", repr(msg))
+        logger.debug("edmcoverlay2: send_raw %s", repr(msg))
         self._overlays[msg.get("msgid") or msg.get("shapeid") or msg["id"]] = msg
         if msg["ttl"] <= 0:
             del self._overlays[msg.get("msgid") or msg.get("shapeid") or msg["id"]]
@@ -134,7 +142,7 @@ class Overlay:
             self._updater.start()
 
     def send_message(self, msgid, text, color, x, y, ttl=4, size="normal"):
-        print("edmcoverlay2: send_message", repr([msgid, text, color, x, y, ttl, size]))
+        logger.debug("edmcoverlay2: send_message %s", repr([msgid, text, color, x, y, ttl, size]))
         if not text or not color:
             self._overlays.pop(msgid, None)
         else:
@@ -153,7 +161,7 @@ class Overlay:
             self._updater.start()
 
     def send_shape(self, shapeid, shape, color, fill, x, y, w, h, ttl):
-        print("edmcoverlay2: send_shape", repr([shapeid, shape, color, fill, x, y, w, h, ttl]))
+        logger.debug("edmcoverlay2: send_shape %s", repr([shapeid, shape, color, fill, x, y, w, h, ttl]))
         if not shape or not color:
             self._overlays.pop(shapeid, None)
         else:
@@ -174,6 +182,6 @@ class Overlay:
         if not self._updater.is_alive():
             self._updater.start()
 
-print("edmcoverlay2: instantiating overlay class")
+logger.debug("edmcoverlay2: instantiating overlay class")
 _the_overlay = Overlay()
-print("edmcoverlay2: overlay class instantiated")
+logger.debug("edmcoverlay2: overlay class instantiated")
