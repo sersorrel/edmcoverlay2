@@ -51,7 +51,7 @@ def journal_entry(cmdr, is_beta, system, station, entry, state):
     if entry["event"] in ["LoadGame", "StartUp"] and overlay_process is None:
         logger.info("edmcoverlay2: starting overlay")
         overlay_process = Popen([find_overlay_binary()])
-    elif entry["event"] == "ShutDown":
+    elif entry["event"] in ["Shutdown", "ShutDown"]:
         logger.info("edmcoverlay2: shutdown event received, stopping overlay")
         stop_overlay()
 
