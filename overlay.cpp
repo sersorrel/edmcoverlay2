@@ -294,7 +294,7 @@ int main() {
         std::string request = read_response(socket);
         char* request2 = strdup(request.c_str());
         /* cout << "edmcoverlay2: overlay got request: " << request << endl; */
-        cout << "edmcoverlay2: overlay got request" << endl;
+        /* cout << "edmcoverlay2: overlay got request" << endl; */
 
         char* endptr;
         JsonValue value;
@@ -466,7 +466,7 @@ int main() {
             }
         }
 
-        cout << "edmcoverlay2: done drawing " << std::to_string(n) << " graphics" << endl;
+        /* cout << "edmcoverlay2: done drawing " << std::to_string(n) << " graphics" << endl; */
 
         XFreeFont(g_display, normalfont);
         XFreeFont(g_display, largefont);
