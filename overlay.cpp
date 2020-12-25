@@ -43,12 +43,8 @@ unsigned short port = 5020;
 #define BASIC_EVENT_MASK (StructureNotifyMask|ExposureMask|PropertyChangeMask|EnterWindowMask|LeaveWindowMask|KeyPressMask|KeyReleaseMask|KeymapStateMask)
 #define NOT_PROPAGATE_MASK (KeyPressMask|KeyReleaseMask|ButtonPressMask|ButtonReleaseMask|PointerMotionMask|ButtonMotionMask)
 
-#define WINDOW_X_POSITION 1920
-#define WINDOW_Y_POSITION 0
-#define WINDOW_WIDTH 1920
-#define WINDOW_HEIGHT 1080
-#define SCALE_W(x) ((int)((x) * WINDOW_WIDTH / 1280.0))
-#define SCALE_H(y) ((int)((y) * WINDOW_HEIGHT / 1024.0))
+#define SCALE_W(x) ((int)((x) * window_width / 1280.0))
+#define SCALE_H(y) ((int)((y) * window_height / 1024.0))
 #define SCALE_X(x) (SCALE_W(x) + 20)
 #define SCALE_Y(y) (SCALE_H(y) + 40)
 
@@ -79,6 +75,11 @@ string fpsstring = "";
 
 int     shape_event_base;
 int     shape_error_base;
+
+int window_xpos;
+int window_ypos;
+int window_width;
+int window_height;
 
 long event_mask = (StructureNotifyMask|ExposureMask|PropertyChangeMask|EnterWindowMask|LeaveWindowMask|KeyRelease | ButtonPress|ButtonRelease|KeymapStateMask);
 
@@ -161,7 +162,7 @@ void createShapedWindow() {
     //unsigned long mask = CWBackPixel|CWBorderPixel|CWWinGravity|CWBitGravity|CWSaveUnder|CWEventMask|CWDontPropagate|CWOverrideRedirect;
     unsigned long mask = CWColormap | CWBorderPixel | CWBackPixel | CWEventMask | CWWinGravity|CWBitGravity | CWSaveUnder | CWDontPropagate | CWOverrideRedirect;
 
-    g_win = XCreateWindow(g_display, root, WINDOW_X_POSITION, WINDOW_Y_POSITION, WINDOW_WIDTH, WINDOW_HEIGHT, 0, vinfo.depth, InputOutput, vinfo.visual, mask, &attr);
+    g_win = XCreateWindow(g_display, root, window_xpos, window_ypos, window_width, window_height, 0, vinfo.depth, InputOutput, vinfo.visual, mask, &attr);
 
 	/* g_bitmap = XCreateBitmapFromData (g_display, RootWindow(g_display, g_screen), (char *)myshape_bits, myshape_width, myshape_height); */
 
@@ -255,7 +256,15 @@ void sighandler(int signum) {
 }
 
 
-int main() {
+int main(int argc, char* argv[]) {
+    if (argc != 5) {
+        cout << "Usage: overlay X Y W H" << endl;
+        return 1;
+    }
+    window_xpos = atoi(argv[1]);
+    window_ypos = atoi(argv[2]);
+    window_width = atoi(argv[3]);
+    window_height = atoi(argv[4]);
     cout << "edmcoverlay2: overlay starting up..." << endl;
     signal(SIGINT, sighandler);
     signal(SIGTERM, sighandler);
@@ -271,7 +280,7 @@ int main() {
         gc = XCreateGC(g_display, g_win, 0, 0);
         XSetBackground(g_display, gc, white.pixel);
         XSetForeground(g_display, gc, transparent.pixel);
-        XFillRectangle(g_display, g_win, gc, 0, 0, WINDOW_WIDTH, WINDOW_HEIGHT);
+        XFillRectangle(g_display, g_win, gc, 0, 0, window_width, window_height);
         const char* fontname = "9x15bold";
         XFontStruct* normalfont = XLoadQueryFont(g_display, fontname);
         if (!normalfont) {
@@ -325,7 +334,7 @@ int main() {
         }
 
         XSetForeground(g_display, gc, transparent.pixel);
-        XFillRectangle(g_display, g_win, gc, 0, 0, WINDOW_WIDTH, WINDOW_HEIGHT);
+        XFillRectangle(g_display, g_win, gc, 0, 0, window_width, window_height);
         XSetForeground(g_display, gc, black.pixel);
         XFillRectangle(g_display, g_win, gc, 0, 0, 200, 50);
         XSetForeground(g_display, gc, white.pixel);

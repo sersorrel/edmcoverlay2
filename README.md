@@ -6,10 +6,8 @@
 
 - Clone the repo into your EDMC plugins directory
   - NB: you must name the directory `edmcoverlay`, not `edmcoverlay2`
-- Adjust the constants in `overlay.cpp` to match your screen size and
-  layout (i.e. `WINDOW_X_POSITION`, `WINDOW_Y_POSITION`, `WINDOW_WIDTH`
-  and `WINDOW_HEIGHT`)
 - Run `make`
+- In the EDMC settings, configure the size and position of the overlay
 
 ## Usage
 
