@@ -5,7 +5,9 @@
 ## Installation
 
 - Clone the repo into your EDMC plugins directory
-  - NB: you must name the directory `edmcoverlay`, not `edmcoverlay2`
+  - NB: you *must* name the directory `edmcoverlay`, not `edmcoverlay2`
+- Install the dependencies (mostly X11 development headers; on Ubuntu,
+  the `xorg-dev` package may be sufficient)
 - Run `make`
 - In the EDMC settings, configure the size and position of the overlay
 
@@ -21,6 +23,13 @@ Some features are not yet implemented, and there are likely to be bugs.
 ## Contributing
 
 Contributions are welcome!
+
+In particular, I'd like to move away from direct use of the X APIs where
+possible – the use of `XDrawString` means that there are very few
+available fonts, and the fonts that do exist have extremely limited
+glyph coverage. Probably something like Pango (presumably in conjunction
+with cairo) is the best option. Help in doing this would be greatly
+appreciated.
 
 Everyone interacting with this project is expected to abide by the terms
 of the Contributor Covenant Code of Conduct. Violations should be
