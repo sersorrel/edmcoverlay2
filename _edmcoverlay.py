@@ -1,4 +1,5 @@
 import logging
+import secrets
 from pathlib import Path
 
 from config import appname
@@ -21,7 +22,7 @@ IS_PRETENDING_TO_BE_EDMCOVERLAY = True
 _stopping = False
 
 
-class Overlay:
+class _Overlay:
     _instance = None
     _lock = threading.Lock()
     _initialised = False
@@ -182,6 +183,28 @@ class Overlay:
         if not self._updater.is_alive():
             self._updater.start()
 
+
+class Overlay:
+    def __init__(self) -> None:
+        self._token = secrets.token_hex(4)
+        self._overlay = _Overlay()
+
+    def send_raw(self, msg):
+        if "msgid" in msg:
+            msg["msgid"] = self._token + msg["msgid"]
+        if "shapeid" in msg:
+            msg["shapeid"] = self._token + msg["shapeid"]
+        if "id" in msg:
+            msg["id"] = self._token + msg["id"]
+        return self._overlay.send_raw(msg)
+
+    def send_message(self, msgid, text, color, x, y, ttl=4, size="normal"):
+        return self._overlay.send_message(self._token + msgid, text, color, x, y, ttl=ttl, size=size)
+
+    def send_shape(self, shapeid, shape, color, fill, x, y, w, h, ttl):
+        return self._overlay.send_shape(self._token + shapeid, shape, color, fill, x, y, w, h, ttl)
+
+
 logger.debug("edmcoverlay2: instantiating overlay class")
-_the_overlay = Overlay()
+_the_overlay = _Overlay()
 logger.debug("edmcoverlay2: overlay class instantiated")
