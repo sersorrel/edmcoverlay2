@@ -446,7 +446,8 @@ int main(int argc, char* argv[])
                     {
                         /* cout << "edmcoverlay2: specifically, a vect" << endl; */
                         // TODO: make this less gross
-#define UNINIT_COORD 1000000
+
+                        constexpr static int UNINIT_COORD = 1000000;
                         int x1 = UNINIT_COORD, y1 = UNINIT_COORD, x2 = UNINIT_COORD, y2 = UNINIT_COORD;
                         JsonNode* vect_ = drawitem.shape.vect;
                         for (JsonNode* node_ = vect_; node_ != nullptr; node_ = node_->next)
