@@ -36,7 +36,7 @@
 
 #include "socket.hh"
 #include "json_message.hh"
-#include "gason.h"
+#include "drawables.h"
 #include "opaque_ptr.h"
 #include "colors_mgr.h"
 #include "cm_ctors.h"
@@ -199,39 +199,7 @@ static void openDisplay()
 }
 
 
-enum class drawmode_t
-{
-    idk,
-    text,
-    shape,
-};
 
-// NB: DO NOT FREE THESE
-// they are pointers into request2
-struct drawitem_t
-{
-    drawmode_t drawmode{drawmode_t::idk};
-    // common
-    int x{0};
-    int y{0};
-    char* color{nullptr};
-
-    struct drawtext_t
-    {
-        // text
-        char* text{nullptr};
-        char* size{nullptr};
-    } text;
-    struct drawshape_t
-    {
-        // shape
-        char* shape{nullptr};
-        char* fill{nullptr};
-        int w{0};
-        int h{0};
-        JsonNode* vect{nullptr};
-    } shape;
-};
 
 
 static void sighandler(int signum)
@@ -352,137 +320,82 @@ int main(int argc, char* argv[])
 
         std::cout << "edmcoverlay2: overlay got request: " << request << std::endl;
 
-        char* endptr{nullptr};
-        JsonValue value;
-        JsonAllocator alloc;
-        if (jsonParse(const_cast<char*>(request.c_str()), &endptr, &value, alloc) != JSON_OK)
-        {
-            std::cout << "edmcoverlay2: bad json sent to overlay" << std::endl;
-            continue;
-        }
-
         const auto gc = allocGlobGC();
         print_version(gc, white, version_w, "edmcoverlay2 running");
 
-        //hate chained IFs, lets do it more readable....
-#define LHDR [](JsonNode* node, drawitem_t& drawitem)->void
-        const static std::map<std::string, std::function<void(JsonNode* node, drawitem_t& drawitem)>> processors =
+        draw_task::drawitem_t drawitem;
+
+        try
         {
-            {"x", LHDR{drawitem.x = node->value.toNumber();}},
-            {"y", LHDR{drawitem.y = node->value.toNumber();}},
-            {"color", LHDR{drawitem.color = node->value.toString();}},
-            {"text", LHDR{drawitem.drawmode = drawmode_t::text; drawitem.text.text = node->value.toString();}},
-            {"size", LHDR{drawitem.drawmode = drawmode_t::text; drawitem.text.size = node->value.toString();}},
-            {"shape", LHDR{drawitem.drawmode = drawmode_t::shape; drawitem.shape.shape = node->value.toString();}},
-            {"fill", LHDR{drawitem.drawmode = drawmode_t::shape; drawitem.shape.fill = node->value.toString();}},
-            {"w", LHDR{drawitem.drawmode = drawmode_t::shape; drawitem.shape.w = node->value.toNumber();}},
-            {"h", LHDR{drawitem.drawmode = drawmode_t::shape; drawitem.shape.h = node->value.toNumber();}},
-            {"vector", LHDR{drawitem.drawmode = drawmode_t::shape; drawitem.shape.vect = node->value.toNode();}}
-        };
-#undef LHDR
-
-        int n = 0;
-        for (auto v : value)
+            drawitem = draw_task::parseJsonString(request);
+        }
+        catch (std::exception& e)
         {
-            n++;
-            /* cout << "edmcoverlay2: overlay processing graphics number " << std::to_string(++n) << endl; */
-            /* text message: id, text, color, x, y, ttl, size
-            * shape message: id, shape, color, fill, x, y, w, h, ttl
-            * color: "red", "yellow", "green", "blue", "#rrggbb"
-            * shape: "rect"
-            * size: "normal", "large"
-            */
-            drawitem_t drawitem;
-            for (JsonNode* node = v->value.toNode(); node != nullptr; node = node->next)
+            std::cerr << "Json parse failed with message: " << e.what() << std::endl;
+            drawitem.drawmode = draw_task::drawmode_t::idk;
+        }
+        catch (...)
+        {
+            std::cerr << "Json parse failed with uknnown reason." << std::endl;
+            drawitem.drawmode = draw_task::drawmode_t::idk;
+        }
+        if (drawitem.drawmode == draw_task::drawmode_t::idk)
+            continue;
+
+
+        if (drawitem.drawmode == draw_task::drawmode_t::text)
+        {
+            const auto& font = (drawitem.text.size == "large") ? largefont : normalfont;
+            XSetFont(g_display, gc, font->fid);
+            XSetForeground(g_display, gc, colors.get(drawitem.color).pixel);
+            XDrawString(g_display, g_win, gc, SCALE_X(drawitem.x), SCALE_Y(drawitem.y),
+                        drawitem.text.text.c_str(), strlen(drawitem.text.text.c_str()));
+        }
+        else
+        {
+            /* cout << "edmcoverlay2: drawing a shape" << endl; */
+            XSetForeground(g_display, gc, colors.get(drawitem.color).pixel);
+            if (drawitem.shape.shape == "rect")
             {
-                const auto it = processors.find(node->key);
-                if (it != processors.end())
-                {
-                    const auto prev_mode  = drawitem.drawmode;
-                    it->second(node, drawitem);
-                    if (prev_mode != drawmode_t::idk && drawitem.drawmode != prev_mode)
-                    {
-                        std::cout << "Mode was double switched text/shape in the same JSON. Ignoring."  << std::endl;
-                        drawitem.drawmode = drawmode_t::idk;
-                        break;
-                    }
-                }
-                else
-                    std::cout << "bad key: " << node->key << std::endl;
-            }
-
-
-
-            ///////////////// the part where we draw the thing
-
-            if (drawitem.drawmode == drawmode_t::idk)
-                continue;
-
-            if (drawitem.drawmode == drawmode_t::text)
-            {
-                /* cout << "edmcoverlay2: drawing a text" << endl; */
-                if (strcmp(drawitem.text.size, "large") == 0)
-                    XSetFont(g_display, gc, largefont->fid);
-
-                else
-                    XSetFont(g_display, gc, normalfont->fid);
-                XSetForeground(g_display, gc, colors.get(drawitem.color).pixel);
-                XDrawString(g_display, g_win, gc, SCALE_X(drawitem.x), SCALE_Y(drawitem.y),
-                            drawitem.text.text, strlen(drawitem.text.text));
+                /* cout << "edmcoverlay2: specifically, a rect" << endl; */
+                // TODO distinct fill/edge colour
+                XDrawRectangle(g_display, g_win, gc, SCALE_X(drawitem.x), SCALE_Y(drawitem.y), SCALE_W(drawitem.shape.w), SCALE_H(drawitem.shape.h));
             }
             else
-            {
-                /* cout << "edmcoverlay2: drawing a shape" << endl; */
-                XSetForeground(g_display, gc, colors.get(drawitem.color).pixel);
-                if (strcmp(drawitem.shape.shape, "rect") == 0)
+                if (drawitem.shape.shape == "vect")
                 {
-                    /* cout << "edmcoverlay2: specifically, a rect" << endl; */
-                    // TODO distinct fill/edge colour
-                    XDrawRectangle(g_display, g_win, gc, SCALE_X(drawitem.x), SCALE_Y(drawitem.y), SCALE_W(drawitem.shape.w), SCALE_H(drawitem.shape.h));
-                }
-                else
-                    if (strcmp(drawitem.shape.shape, "vect") == 0)
+                    /* cout << "edmcoverlay2: specifically, a vect" << endl; */
+                    // TODO: make this less gross
+
+                    constexpr static int UNINIT_COORD = 1000000;
+                    int x1 = UNINIT_COORD, y1 = UNINIT_COORD, x2 = UNINIT_COORD, y2 = UNINIT_COORD;
+                    for (const auto& node_ : drawitem.shape.vect.items())
                     {
-                        /* cout << "edmcoverlay2: specifically, a vect" << endl; */
-                        // TODO: make this less gross
+                        // node_ is a point
+                        const auto& val = node_.value();
+                        int x = val["x"].get<int>();
+                        int y = val["y"].get<int>();
 
-                        constexpr static int UNINIT_COORD = 1000000;
-                        int x1 = UNINIT_COORD, y1 = UNINIT_COORD, x2 = UNINIT_COORD, y2 = UNINIT_COORD;
-                        JsonNode* vect_ = drawitem.shape.vect;
-                        for (JsonNode* node_ = vect_; node_ != nullptr; node_ = node_->next)
+                        if (x1 == UNINIT_COORD)
                         {
-                            // node_ is a point
-                            int x = 0, y = 0;
-                            for (auto z : node_->value)
-                            {
-                                if (strcmp(z->key, "x") == 0)
-                                    x = z->value.toNumber();
-
-                                else
-                                    if (strcmp(z->key, "y") == 0)
-                                        y = z->value.toNumber();
-                            }
-                            if (x1 == UNINIT_COORD)
-                            {
-                                x1 = x;
-                                y1 = y;
-                                continue;
-                            }
-                            if (x2 == UNINIT_COORD)
-                            {
-                                x2 = x;
-                                y2 = y;
-                                XDrawLine(g_display, g_win, gc, SCALE_X(x1), SCALE_Y(y1), SCALE_X(x2), SCALE_Y(y2));
-                                continue;
-                            }
-                            x1 = x2;
-                            y1 = y2;
+                            x1 = x;
+                            y1 = y;
+                            continue;
+                        }
+                        if (x2 == UNINIT_COORD)
+                        {
                             x2 = x;
                             y2 = y;
                             XDrawLine(g_display, g_win, gc, SCALE_X(x1), SCALE_Y(y1), SCALE_X(x2), SCALE_Y(y2));
+                            continue;
                         }
+                        x1 = x2;
+                        y1 = y2;
+                        x2 = x;
+                        y2 = y;
+                        XDrawLine(g_display, g_win, gc, SCALE_X(x1), SCALE_Y(y1), SCALE_X(x2), SCALE_Y(y2));
                     }
-            }
+                }
         }
     }
     return 0;
