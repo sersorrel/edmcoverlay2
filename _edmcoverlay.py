@@ -114,8 +114,10 @@ class _Overlay:
                     try:
                         msg = json.loads(obj)
                         self.send_raw(msg)
-                    except:
+                    except Exception as e:
                         print('Got invalid JSON incoming to python module.')
+                        print(e)
+
                 data = objects[-1]
             sock.close()
             if data:
