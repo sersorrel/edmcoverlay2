@@ -324,23 +324,30 @@ int main(int argc, char* argv[])
     const auto normalfont = allocFont("9x15bold");
     const auto largefont = allocFont("12x24");
 
-    const auto print_version = [&normalfont, &cleanGC, &black](GC gc, const XColor & color, const char* version)
+    const auto print_version = [&normalfont, &cleanGC, &black](GC gc, const XColor & color, int& width, const char* version)
     {
         cleanGC(gc);
         XSetForeground(g_display, gc, black.pixel);
-        XFillRectangle(g_display, g_win, gc, 0, 0, 200, 50);
+        const auto len = strlen(version);
+        const auto scalex = SCALE_X(0);
+
+        if (width < 0)
+            width = XTextWidth(normalfont, version, len) + 5 + scalex;
+        XFillRectangle(g_display, g_win, gc, 0, 0, width, 50);
         XSetForeground(g_display, gc, color.pixel);
-        XDrawString(g_display, g_win, gc, SCALE_X(0), SCALE_Y(0) - 10, version, strlen(version));
+        XDrawString(g_display, g_win, gc, scalex, SCALE_Y(0) - 10, version, len);
     };
 
 
     {
         const auto gc = allocGlobGC();
-        print_version(gc, green, "edmcoverlay2 overlay process: running!");
+        int w = -1;
+        print_version(gc, green, w, "edmcoverlay2 overlay process: running!");
         std::cout << "edmcoverlay2: overlay ready." << std::endl;
     }
 
 
+    int version_w = -1;
     while (true)
     {
         auto socket = server->accept_autoclose();
@@ -359,7 +366,7 @@ int main(int argc, char* argv[])
         }
 
         const auto gc = allocGlobGC();
-        print_version(gc, white, "edmcoverlay2 running");
+        print_version(gc, white, version_w, "edmcoverlay2 running");
 
         int n = 0;
         for (auto v : value)
