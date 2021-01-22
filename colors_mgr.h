@@ -57,6 +57,7 @@ public:
 private:
     XColor color_from_name(const std::string& name) const
     {
+        //todo: add more colors here which can be recognized by string-name
         const static std::map<std::string, rgba> named_colors =
         {
             {"transparent", {0, 0, 0, 0}},
@@ -68,7 +69,7 @@ private:
             {"red", {255, 0, 0, 255}},
         };
 
-        rgba curr;
+        rgba curr; //using default constructed which is white
 
         if (name.rfind("#", 0) == 0)
         {
@@ -105,7 +106,7 @@ private:
             throw std::runtime_error("createXColorFromRGB: Cannot create color");
 
 
-        *(&color.pixel) = ((*(&color.pixel)) & 0x00ffffffu) | (c.alpha << 24);
+        color.pixel = (color.pixel & 0x00ffffffu) | (c.alpha << 24);
         return color;
     }
 };
