@@ -54,8 +54,6 @@ opaque_ptr<Display> g_display;
 
 static int          g_screen;
 static Window       g_win;
-static int          g_disp_width;
-static int          g_disp_height;
 
 /* Pixmap   g_bitmap; */
 static Colormap g_colormap;
@@ -67,9 +65,6 @@ int fpsmeterc = 0;
 #define FPSMETERSAMPLE 100
 auto duration = std::chrono::duration_cast<std::chrono::microseconds>( t2 - t1 ).count();
 std::string fpsstring = "";
-
-static int     shape_event_base;
-static int     shape_error_base;
 
 static int window_xpos;
 static int window_ypos;
@@ -187,10 +182,10 @@ static void openDisplay()
 
     g_screen    = DefaultScreen(g_display);
 
-    g_disp_width  = DisplayWidth(g_display, g_screen);
-    g_disp_height = DisplayHeight(g_display, g_screen);
-
     // Has shape extions?
+    int     shape_event_base;
+    int     shape_error_base;
+
     if (!XShapeQueryExtension (g_display, &shape_event_base, &shape_error_base))
     {
         std::cerr << "NO shape extension in your system !" << std::endl;
