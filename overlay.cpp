@@ -97,16 +97,6 @@ static inline int SCALE_Y(int y)
 constexpr static long event_mask = (StructureNotifyMask | ExposureMask | PropertyChangeMask | EnterWindowMask | LeaveWindowMask | KeyRelease | ButtonPress | ButtonRelease |
                                     KeymapStateMask);
 
-static void allow_input_passthrough (Window w)
-{
-    XserverRegion region = XFixesCreateRegion (g_display, NULL, 0);
-
-    //XFixesSetWindowShapeRegion (g_display, w, ShapeBounding, 0, 0, 0);
-    XFixesSetWindowShapeRegion (g_display, w, ShapeInput, 0, 0, region);
-
-    XFixesDestroyRegion (g_display, region);
-}
-
 /*
 static void list_fonts()
 {
@@ -122,9 +112,8 @@ static void list_fonts()
 */
 
 // Create a window
-static void createShapedWindow(const XColor& bgcolor)
+static void createShapedWindow()
 {
-    auto wattr = allocCType<XSetWindowAttributes>();
     Window root    = DefaultRootWindow(g_display);
 
     auto vinfo = allocCType<XVisualInfo>();
@@ -133,7 +122,7 @@ static void createShapedWindow(const XColor& bgcolor)
 
     auto attr = allocCType<XSetWindowAttributes>();
     attr.background_pixmap = None;
-    attr.background_pixel = bgcolor.pixel;
+    attr.background_pixel = 0;
     attr.border_pixel = 0;
     attr.win_gravity = NorthWestGravity;
     attr.bit_gravity = ForgetGravity;
@@ -154,13 +143,19 @@ static void createShapedWindow(const XColor& bgcolor)
     XShapeCombineMask(g_display, g_win, ShapeInput, 0, 0, None, ShapeSet );
 
     // We want shape-changed event too
-#define SHAPE_MASK ShapeNotifyMask
-    XShapeSelectInput (g_display, g_win, SHAPE_MASK );
+    XShapeSelectInput (g_display, g_win, ShapeNotifyMask);
 
     // Tell the Window Manager not to draw window borders (frame) or title.
+    auto wattr = allocCType<XSetWindowAttributes>();
     wattr.override_redirect = 1;
     XChangeWindowAttributes(g_display, g_win, CWOverrideRedirect, &wattr);
-    allow_input_passthrough(g_win);
+
+
+    //pass through input
+    XserverRegion region = XFixesCreateRegion (g_display, NULL, 0);
+    //XFixesSetWindowShapeRegion (g_display, w, ShapeBounding, 0, 0, 0);
+    XFixesSetWindowShapeRegion (g_display, g_win, ShapeInput, 0, 0, region);
+    XFixesDestroyRegion (g_display, region);
 
     // Show the window
     XMapWindow(g_display, g_win);
@@ -181,6 +176,14 @@ static void openDisplay()
         exit(-1);
     }
 
+    Atom cmAtom = XInternAtom(g_display, "_NET_WM_CM_S0", 0);
+    Window cmOwner = XGetSelectionOwner(g_display, cmAtom);
+    if (!cmOwner)
+    {
+        std::cerr << "Composite manager is absent." << std::endl;
+        std::cerr << "Please check instructions: https://wiki.archlinux.org/index.php/Xcompmgr" << std::endl;
+        exit(-1);
+    }
     g_screen    = DefaultScreen(g_display);
 
     // Has shape extions?
@@ -269,7 +272,7 @@ int main(int argc, char* argv[])
     const auto& green = colors.get("green");
     const auto& transparent = colors.get("transparent");
 
-    createShapedWindow(transparent);
+    createShapedWindow();
 
     std::shared_ptr<tcp_server_t> server(new tcp_server_t(port), [](tcp_server_t *p)
     {
@@ -284,7 +287,7 @@ int main(int argc, char* argv[])
 
     const auto allocGlobGC = []()
     {
-        return opaque_ptr<_XGC>(std::shared_ptr<_XGC>(XCreateGC(g_display, g_win, 0, 0), [](auto * p)
+        return opaque_ptr<_XGC>(std::shared_ptr<_XGC>(XCreateGC(g_display, g_win, 0, nullptr), [](auto * p)
         {
             if (p)
                 XFreeGC(g_display, p);
@@ -308,27 +311,34 @@ int main(int argc, char* argv[])
         }));
     };
 
+    const auto cleanGC = [&white, &transparent](GC gc)
+    {
+        if (gc)
+        {
+            XSetBackground(g_display, gc, white.pixel);
+            XSetForeground(g_display, gc, transparent.pixel);
+            XFillRectangle(g_display, g_win, gc, 0, 0, window_width, window_height);
+        }
+    };
+
+    const auto normalfont = allocFont("9x15bold");
+    const auto largefont = allocFont("12x24");
+
+    const auto print_version = [&normalfont, &cleanGC, &black](GC gc, const XColor & color, const char* version)
+    {
+        cleanGC(gc);
+        XSetForeground(g_display, gc, black.pixel);
+        XFillRectangle(g_display, g_win, gc, 0, 0, 200, 50);
+        XSetForeground(g_display, gc, color.pixel);
+        XDrawString(g_display, g_win, gc, SCALE_X(0), SCALE_Y(0) - 10, version, strlen(version));
+    };
+
 
     {
         const auto gc = allocGlobGC();
-        const auto font = allocFont("9x15bold");
-        XSetFont(g_display, gc, font->fid);
-
-        XSetBackground(g_display, gc, white.pixel);
-        XSetForeground(g_display, gc, transparent.pixel);
-        XFillRectangle(g_display, g_win, gc, 0, 0, window_width, window_height);
-
-        XSetForeground(g_display, gc, black.pixel);
-        XFillRectangle(g_display, g_win, gc, 0, 0, 250, 100);
-        XSetForeground(g_display, gc, green.pixel);
-
-        const char* text = "edmcoverlay2 overlay process: running!";
-        XDrawString(g_display, g_win, gc, 10, 60, text, strlen(text));
-
+        print_version(gc, green, "edmcoverlay2 overlay process: running!");
+        std::cout << "edmcoverlay2: overlay ready." << std::endl;
     }
-
-    std::cout << "edmcoverlay2: overlay ready." << std::endl;
-
 
 
     while (true)
@@ -349,18 +359,7 @@ int main(int argc, char* argv[])
         }
 
         const auto gc = allocGlobGC();
-        const auto normalfont = allocFont("9x15bold");
-        const auto largefont = allocFont("12x24");
-
-
-        XSetBackground(g_display, gc, white.pixel);
-        XSetForeground(g_display, gc, transparent.pixel);
-        XFillRectangle(g_display, g_win, gc, 0, 0, window_width, window_height);
-        XSetForeground(g_display, gc, black.pixel);
-        XFillRectangle(g_display, g_win, gc, 0, 0, 200, 50);
-        XSetForeground(g_display, gc, white.pixel);
-        const static char* version = "edmcoverlay2 running";
-        XDrawString(g_display, g_win, gc, SCALE_X(0), SCALE_Y(0) - 10, version, strlen(version));
+        print_version(gc, white, "edmcoverlay2 running");
 
         int n = 0;
         for (auto v : value)
