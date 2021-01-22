@@ -48,9 +48,6 @@ constexpr static long BASIC_EVENT_MASK = (StructureNotifyMask | ExposureMask | P
 constexpr static long NOT_PROPAGATE_MASK = (KeyPressMask | KeyReleaseMask | ButtonPressMask |
         ButtonReleaseMask | PointerMotionMask | ButtonMotionMask);
 
-
-using namespace std;
-
 static Display *g_display;
 static int      g_screen;
 static Window   g_win;
@@ -73,7 +70,7 @@ std::chrono::high_resolution_clock::time_point t2 = std::chrono::high_resolution
 int fpsmeterc = 0;
 #define FPSMETERSAMPLE 100
 auto duration = std::chrono::duration_cast<std::chrono::microseconds>( t2 - t1 ).count();
-string fpsstring = "";
+std::string fpsstring = "";
 
 static int     shape_event_base;
 static int     shape_error_base;
@@ -139,7 +136,7 @@ XColor createXColorFromRGB(short red, short green, short blue)
 
     if (!XAllocColor(g_display, DefaultColormap(g_display, g_screen), &color))
     {
-        std::cerr << "createXColorFromRGB: Cannot create color" << endl;
+        std::cerr << "createXColorFromRGB: Cannot create color" << std::endl;
         exit(-1);
     }
     return color;
@@ -157,7 +154,7 @@ XColor createXColorFromRGBA(short red, short green, short blue, short alpha)
 
     if (!XAllocColor(g_display, DefaultColormap(g_display, g_screen), &color))
     {
-        std::cerr << "createXColorFromRGB: Cannot create color" << endl;
+        std::cerr << "createXColorFromRGB: Cannot create color" << std::endl;
         exit(-1);
     }
 
@@ -228,7 +225,7 @@ void openDisplay()
 
     if (!g_display)
     {
-        cerr << "Failed to open X display" << endl;
+        std::cerr << "Failed to open X display" << std::endl;
         exit(-1);
     }
 
@@ -240,7 +237,7 @@ void openDisplay()
     // Has shape extions?
     if (!XShapeQueryExtension (g_display, &shape_event_base, &shape_error_base))
     {
-        cerr << "NO shape extension in your system !" << endl;
+        std::cerr << "NO shape extension in your system !" << std::endl;
         exit (-1);
     }
 }
@@ -287,10 +284,10 @@ union drawitem_t
 
 void sighandler(int signum)
 {
-    cout << "edmcoverlay2: got signal " << signum << endl;
+    std::cout << "edmcoverlay2: got signal " << signum << std::endl;
     if ((signum == SIGINT) || (signum == SIGTERM))
     {
-        cout << "edmcoverlay2: SIGINT/SIGTERM, exiting" << endl;
+        std::cout << "edmcoverlay2: SIGINT/SIGTERM, exiting" << std::endl;
         exit(0);
     }
 }
@@ -301,14 +298,14 @@ int main(int argc, char* argv[])
 {
     if (argc != 5)
     {
-        cout << "Usage: overlay X Y W H" << endl;
+        std::cout << "Usage: overlay X Y W H" << std::endl;
         return 1;
     }
     window_xpos = atoi(argv[1]);
     window_ypos = atoi(argv[2]);
     window_width = atoi(argv[3]);
     window_height = atoi(argv[4]);
-    cout << "edmcoverlay2: overlay starting up..." << endl;
+    std::cout << "edmcoverlay2: overlay starting up..." << std::endl;
     signal(SIGINT, sighandler);
     signal(SIGTERM, sighandler);
     openDisplay();
@@ -341,7 +338,7 @@ int main(int argc, char* argv[])
         XFlush(g_display);
     }
 
-    cout << "edmcoverlay2: overlay ready." << endl;
+    std::cout << "edmcoverlay2: overlay ready." << std::endl;
     while (true)
     {
         socket_t socket = server.accept();
@@ -355,7 +352,7 @@ int main(int argc, char* argv[])
         JsonAllocator alloc;
         if (jsonParse(request2, &endptr, &value, alloc) != JSON_OK)
         {
-            cout << "edmcoverlay2: bad json sent to overlay" << endl;
+            std::cout << "edmcoverlay2: bad json sent to overlay" << std::endl;
             free(request2);
             socket.close();
             continue;
@@ -458,7 +455,7 @@ int main(int argc, char* argv[])
                                                         drawitem.shape.vect = node->value.toNode();
 
                                                     else
-                                                        cout << "bad key: " << node->key << endl;
+                                                        std::cout << "bad key: " << node->key << std::endl;
             }
 
             ///////////////// the part where we draw the thing
