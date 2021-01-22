@@ -38,6 +38,7 @@
 #include "gason.h"
 #include "opaque_ptr.h"
 #include "colors_mgr.h"
+#include "cm_ctors.h"
 
 unsigned short port = 5020;
 
@@ -123,14 +124,14 @@ static void list_fonts()
 // Create a window
 static void createShapedWindow(const XColor& bgcolor)
 {
-    XSetWindowAttributes wattr;
+    auto wattr = allocCType<XSetWindowAttributes>();
     Window root    = DefaultRootWindow(g_display);
 
-    XVisualInfo vinfo;
+    auto vinfo = allocCType<XVisualInfo>();
     XMatchVisualInfo(g_display, DefaultScreen(g_display), 32, TrueColor, &vinfo);
     g_colormap = XCreateColormap(g_display, DefaultRootWindow(g_display), vinfo.visual, AllocNone);
 
-    XSetWindowAttributes attr;
+    auto attr = allocCType<XSetWindowAttributes>();
     attr.background_pixmap = None;
     attr.background_pixel = bgcolor.pixel;
     attr.border_pixel = 0;

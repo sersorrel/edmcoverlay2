@@ -93,9 +93,7 @@ private:
 
     XColor createXColorFromRGBA(const rgba& c) const
     {
-        XColor color;
-        //this is C=structure, so does not have c-tor
-        memset(&color, 0, sizeof(XColor));
+        auto color = allocCType<XColor>();
 
         // m_color.red = red * 65535 / 255;
         color.red = (static_cast<uint32_t>(c.red) * 0xFFFFu) / 0xFFu;

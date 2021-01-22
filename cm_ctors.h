@@ -1,4 +1,5 @@
 #pragma once
+#include <memory.h>
 
 //test must be used OUTSIDE class definition like
 /*
@@ -17,3 +18,12 @@
 //only stack allocation allowed
 #define STACK_ONLY static void *operator new     (size_t) = delete; \
                    static void *operator new[]   (size_t) = delete
+
+//sort of extern constructor to keep C-structures initialized
+template <class T>
+T allocCType()
+{
+    T r;
+    memset(&r, 0, sizeof(T));
+    return r;
+}
