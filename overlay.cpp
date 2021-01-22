@@ -28,6 +28,7 @@
 #include <X11/extensions/Xcomposite.h>
 #include <X11/extensions/Xfixes.h>
 #include <math.h>
+#include <memory>
 
 #include <fstream>
 #include <stdio.h>
@@ -40,31 +41,32 @@
 unsigned short port = 5020;
 
 // Events for normal windows
-#define BASIC_EVENT_MASK (StructureNotifyMask|ExposureMask|PropertyChangeMask|EnterWindowMask|LeaveWindowMask|KeyPressMask|KeyReleaseMask|KeymapStateMask)
-#define NOT_PROPAGATE_MASK (KeyPressMask|KeyReleaseMask|ButtonPressMask|ButtonReleaseMask|PointerMotionMask|ButtonMotionMask)
+constexpr static long BASIC_EVENT_MASK = (StructureNotifyMask | ExposureMask | PropertyChangeMask |
+        EnterWindowMask | LeaveWindowMask | KeyPressMask | KeyReleaseMask |
+        KeymapStateMask);
 
-#define SCALE_W(x) ((int)((x) * window_width / 1280.0))
-#define SCALE_H(y) ((int)((y) * window_height / 1024.0))
-#define SCALE_X(x) (SCALE_W(x) + 20)
-#define SCALE_Y(y) (SCALE_H(y) + 40)
+constexpr static long NOT_PROPAGATE_MASK = (KeyPressMask | KeyReleaseMask | ButtonPressMask |
+        ButtonReleaseMask | PointerMotionMask | ButtonMotionMask);
+
 
 using namespace std;
 
-Display *g_display;
-int      g_screen;
-Window   g_win;
-int      g_disp_width;
-int      g_disp_height;
-/* Pixmap   g_bitmap; */
-Colormap g_colormap;
+static Display *g_display;
+static int      g_screen;
+static Window   g_win;
+static int      g_disp_width;
+static int      g_disp_height;
 
-XColor red;
-XColor green;
-XColor yellow;
-XColor blue;
-XColor black;
-XColor white;
-XColor transparent;
+/* Pixmap   g_bitmap; */
+static Colormap g_colormap;
+
+static XColor red;
+static XColor green;
+static XColor yellow;
+static XColor blue;
+static XColor black;
+static XColor white;
+static XColor transparent;
 
 std::chrono::high_resolution_clock::time_point t1 = std::chrono::high_resolution_clock::now();
 std::chrono::high_resolution_clock::time_point t2 = std::chrono::high_resolution_clock::now();
@@ -73,15 +75,38 @@ int fpsmeterc = 0;
 auto duration = std::chrono::duration_cast<std::chrono::microseconds>( t2 - t1 ).count();
 string fpsstring = "";
 
-int     shape_event_base;
-int     shape_error_base;
+static int     shape_event_base;
+static int     shape_error_base;
 
-int window_xpos;
-int window_ypos;
-int window_width;
-int window_height;
+static int window_xpos;
+static int window_ypos;
+static int window_width;
+static int window_height;
 
-long event_mask = (StructureNotifyMask | ExposureMask | PropertyChangeMask | EnterWindowMask | LeaveWindowMask | KeyRelease | ButtonPress | ButtonRelease | KeymapStateMask);
+static inline int SCALE_W(int x)
+{
+    return x * window_width / 1280.0f;
+}
+
+static inline int SCALE_H(int y)
+{
+    return y * window_height / 1024.0f;
+}
+
+static inline int SCALE_X(int x)
+{
+    return SCALE_W(x) + 20;
+}
+
+
+static inline int SCALE_Y(int y)
+{
+    return SCALE_H(y) + 40;
+}
+
+
+constexpr static long event_mask = (StructureNotifyMask | ExposureMask | PropertyChangeMask | EnterWindowMask | LeaveWindowMask | KeyRelease | ButtonPress | ButtonRelease |
+                                    KeymapStateMask);
 
 void allow_input_passthrough (Window w)
 {
@@ -271,6 +296,7 @@ void sighandler(int signum)
 }
 
 
+
 int main(int argc, char* argv[])
 {
     if (argc != 5)
@@ -335,9 +361,7 @@ int main(int argc, char* argv[])
             continue;
         }
 
-        GC gc;
-        XGCValues gcv;
-        gc = XCreateGC(g_display, g_win, 0, 0);
+        GC gc = XCreateGC(g_display, g_win, 0, 0);
         XSetBackground(g_display, gc, white.pixel);
 
         const char* fontname = "9x15bold";
@@ -525,7 +549,7 @@ int main(int argc, char* argv[])
                         for (JsonNode* node_ = vect_; node_ != nullptr; node_ = node_->next)
                         {
                             // node_ is a point
-                            int x, y;
+                            int x = 0, y = 0;
                             for (auto z : node_->value)
                             {
                                 if (strcmp(z->key, "x") == 0)
