@@ -160,7 +160,6 @@ static void createShapedWindow()
     XColor bgcolor = createXColorFromRGBA(0, 0, 0, 0);
 
     Window root    = DefaultRootWindow(g_display);
-    Visual *visual = DefaultVisual(g_display, g_screen);
 
     XVisualInfo vinfo;
     XMatchVisualInfo(g_display, DefaultScreen(g_display), 32, TrueColor, &vinfo);
