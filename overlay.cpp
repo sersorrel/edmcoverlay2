@@ -32,6 +32,7 @@
 #include <csignal>
 #include <fstream>
 #include <stdio.h>
+#include <functional>
 
 #include "socket.hh"
 #include "json_message.hh"
@@ -364,6 +365,23 @@ int main(int argc, char* argv[])
         const auto gc = allocGlobGC();
         print_version(gc, white, version_w, "edmcoverlay2 running");
 
+        //hate chained IFs, lets do it more readable....
+#define LHDR [](JsonNode* node, drawitem_t& drawitem)->void
+        const static std::map<std::string, std::function<void(JsonNode* node, drawitem_t& drawitem)>> processors =
+        {
+            {"x", LHDR{drawitem.x = node->value.toNumber();}},
+            {"y", LHDR{drawitem.y = node->value.toNumber();}},
+            {"color", LHDR{drawitem.color = node->value.toString();}},
+            {"text", LHDR{drawitem.drawmode = drawmode_t::text; drawitem.text.text = node->value.toString();}},
+            {"size", LHDR{drawitem.drawmode = drawmode_t::text; drawitem.text.size = node->value.toString();}},
+            {"shape", LHDR{drawitem.drawmode = drawmode_t::shape; drawitem.shape.shape = node->value.toString();}},
+            {"fill", LHDR{drawitem.drawmode = drawmode_t::shape; drawitem.shape.fill = node->value.toString();}},
+            {"w", LHDR{drawitem.drawmode = drawmode_t::shape; drawitem.shape.w = node->value.toNumber();}},
+            {"h", LHDR{drawitem.drawmode = drawmode_t::shape; drawitem.shape.h = node->value.toNumber();}},
+            {"vector", LHDR{drawitem.drawmode = drawmode_t::shape; drawitem.shape.vect = node->value.toNode();}}
+        };
+#undef LHDR
+
         int n = 0;
         for (auto v : value)
         {
@@ -378,66 +396,28 @@ int main(int argc, char* argv[])
             drawitem_t drawitem;
             for (JsonNode* node = v->value.toNode(); node != nullptr; node = node->next)
             {
-                /* cout << "got key: " << node->key << endl; */
-                // common
-                if (strcmp(node->key, "x") == 0)
-                    drawitem.x = node->value.toNumber();
-
+                const auto it = processors.find(node->key);
+                if (it != processors.end())
+                {
+                    const auto prev_mode  = drawitem.drawmode;
+                    it->second(node, drawitem);
+                    if (prev_mode != drawmode_t::idk && drawitem.drawmode != prev_mode)
+                    {
+                        std::cout << "Mode was double switched text/shape in the same JSON. Ignoring."  << std::endl;
+                        drawitem.drawmode = drawmode_t::idk;
+                        break;
+                    }
+                }
                 else
-                    if (strcmp(node->key, "y") == 0)
-                        drawitem.y = node->value.toNumber();
-                    else
-                        if (strcmp(node->key, "color") == 0)
-                        {
-                            drawitem.color = node->value.toString();
-                            // text
-                        }
-                        else
-                            if (strcmp(node->key, "text") == 0)
-                            {
-                                drawitem.drawmode = drawmode_t::text;
-                                drawitem.text.text = node->value.toString();
-                            }
-                            else
-                                if (strcmp(node->key, "size") == 0)
-                                {
-                                    drawitem.drawmode = drawmode_t::text;
-                                    drawitem.text.size = node->value.toString();
-                                    // shape
-                                }
-                                else
-                                    if (strcmp(node->key, "shape") == 0)
-                                    {
-                                        drawitem.drawmode = drawmode_t::shape;
-                                        drawitem.shape.shape = node->value.toString();
-                                    }
-                                    else
-                                        if (strcmp(node->key, "fill") == 0)
-                                        {
-                                            drawitem.drawmode = drawmode_t::shape;
-                                            drawitem.shape.fill = node->value.toString();
-                                        }
-                                        else
-                                            if (strcmp(node->key, "w") == 0)
-                                            {
-                                                drawitem.drawmode = drawmode_t::shape;
-                                                drawitem.shape.w = node->value.toNumber();
-                                            }
-                                            else
-                                                if (strcmp(node->key, "h") == 0)
-                                                {
-                                                    drawitem.drawmode = drawmode_t::shape;
-                                                    drawitem.shape.h = node->value.toNumber();
-                                                }
-                                                else
-                                                    if (strcmp(node->key, "vector") == 0)
-                                                        drawitem.shape.vect = node->value.toNode();
-
-                                                    else
-                                                        std::cout << "bad key: " << node->key << std::endl;
+                    std::cout << "bad key: " << node->key << std::endl;
             }
 
+
+
             ///////////////// the part where we draw the thing
+
+            if (drawitem.drawmode == drawmode_t::idk)
+                continue;
 
             if (drawitem.drawmode == drawmode_t::text)
             {
