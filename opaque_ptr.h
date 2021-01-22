@@ -11,7 +11,8 @@ template <typename T>
 class opaque_ptr
 {
 public:
-    using shared_t = std::shared_ptr<T>;
+    using value_t = T; //just handy, maybe
+    using shared_t = std::shared_ptr<value_t>;
 private:
     shared_t ptr{nullptr};
 public:
@@ -29,12 +30,12 @@ public:
         return *this;
     }
 
-    operator T*() const
+    operator value_t*() const
     {
         return ptr.get();
     }
 
-    T* get() const
+    value_t* get() const
     {
         return ptr.get();
     }

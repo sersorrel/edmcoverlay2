@@ -108,7 +108,7 @@ static inline int SCALE_Y(int y)
 constexpr static long event_mask = (StructureNotifyMask | ExposureMask | PropertyChangeMask | EnterWindowMask | LeaveWindowMask | KeyRelease | ButtonPress | ButtonRelease |
                                     KeymapStateMask);
 
-void allow_input_passthrough (Window w)
+static void allow_input_passthrough (Window w)
 {
     XserverRegion region = XFixesCreateRegion (g_display, NULL, 0);
 
@@ -118,34 +118,22 @@ void allow_input_passthrough (Window w)
     XFixesDestroyRegion (g_display, region);
 }
 
-void list_fonts()
+/*
+static void list_fonts()
 {
-    char **fontlist;
-    int num_fonts;
-    fontlist = XListFonts (g_display, "*", 1000, &num_fonts);
-    for (int i = 0; i < num_fonts; ++i)
-        fprintf(stderr, "> %s\n", fontlist[i]);
-}
-// Create a XColor from 3 byte tuple (0 - 255, 0 - 255, 0 - 255).
-XColor createXColorFromRGB(short red, short green, short blue)
-{
-    XColor color;
-
-    // m_color.red = red * 65535 / 255;
-    color.red = (red * 0xFFFF) / 0xFF;
-    color.green = (green * 0xFFFF) / 0xFF;
-    color.blue = (blue * 0xFFFF) / 0xFF;
-    color.flags = DoRed | DoGreen | DoBlue;
-
-    if (!XAllocColor(g_display, DefaultColormap(g_display, g_screen), &color))
+    char **fontlist{nullptr};
+    int num_fonts{0};
+    if ((fontlist = XListFonts (g_display, "*", 1000, &num_fonts)))
     {
-        std::cerr << "createXColorFromRGB: Cannot create color" << std::endl;
-        exit(-1);
+        for (int i = 0; i < num_fonts; ++i)
+            fprintf(stderr, "> %s\n", fontlist[i]);
+        XFreeFontNames(fontlist);
     }
-    return color;
 }
+*/
+
 // Create a XColor from 3 byte tuple (0 - 255, 0 - 255, 0 - 255).
-XColor createXColorFromRGBA(short red, short green, short blue, short alpha)
+static XColor createXColorFromRGBA(short red, short green, short blue, short alpha)
 {
     XColor color;
 
@@ -166,7 +154,7 @@ XColor createXColorFromRGBA(short red, short green, short blue, short alpha)
 }
 
 // Create a window
-void createShapedWindow()
+static void createShapedWindow()
 {
     XSetWindowAttributes wattr;
     XColor bgcolor = createXColorFromRGBA(0, 0, 0, 0);
@@ -222,7 +210,7 @@ void createShapedWindow()
 }
 
 
-void openDisplay()
+static void openDisplay()
 {
     g_display = std::shared_ptr<Display>(XOpenDisplay(0), [](Display * p)
     {
@@ -289,7 +277,7 @@ union drawitem_t
 };
 
 
-void sighandler(int signum)
+static void sighandler(int signum)
 {
     std::cout << "edmcoverlay2: got signal " << signum << std::endl;
     if ((signum == SIGINT) || (signum == SIGTERM))
