@@ -207,32 +207,28 @@ enum class drawmode_t
 
 // NB: DO NOT FREE THESE
 // they are pointers into request2
-union drawitem_t
+struct drawitem_t
 {
+    drawmode_t drawmode{drawmode_t::idk};
+    // common
+    int x{0};
+    int y{0};
+    char* color{nullptr};
+
     struct drawtext_t
     {
-        // common
-        drawmode_t drawmode;
-        int x;
-        int y;
-        char* color;
         // text
-        char* text;
-        char* size;
+        char* text{nullptr};
+        char* size{nullptr};
     } text;
     struct drawshape_t
     {
-        // common
-        drawmode_t drawmode;
-        int x;
-        int y;
-        char* color;
         // shape
-        char* shape;
-        char* fill;
-        int w;
-        int h;
-        JsonNode* vect;
+        char* shape{nullptr};
+        char* fill{nullptr};
+        int w{0};
+        int h{0};
+        JsonNode* vect{nullptr};
     } shape;
 };
 
@@ -385,53 +381,52 @@ int main(int argc, char* argv[])
                 /* cout << "got key: " << node->key << endl; */
                 // common
                 if (strcmp(node->key, "x") == 0)
-                    drawitem.text.x = node->value.toNumber();
+                    drawitem.x = node->value.toNumber();
 
                 else
                     if (strcmp(node->key, "y") == 0)
-                        drawitem.text.y = node->value.toNumber();
-
+                        drawitem.y = node->value.toNumber();
                     else
                         if (strcmp(node->key, "color") == 0)
                         {
-                            drawitem.text.color = node->value.toString();
+                            drawitem.color = node->value.toString();
                             // text
                         }
                         else
                             if (strcmp(node->key, "text") == 0)
                             {
-                                drawitem.text.drawmode = drawmode_t::text;
+                                drawitem.drawmode = drawmode_t::text;
                                 drawitem.text.text = node->value.toString();
                             }
                             else
                                 if (strcmp(node->key, "size") == 0)
                                 {
-                                    drawitem.text.drawmode = drawmode_t::text;
+                                    drawitem.drawmode = drawmode_t::text;
                                     drawitem.text.size = node->value.toString();
                                     // shape
                                 }
                                 else
                                     if (strcmp(node->key, "shape") == 0)
                                     {
-                                        drawitem.shape.drawmode = drawmode_t::shape;
+                                        drawitem.drawmode = drawmode_t::shape;
                                         drawitem.shape.shape = node->value.toString();
                                     }
                                     else
                                         if (strcmp(node->key, "fill") == 0)
                                         {
-                                            drawitem.shape.drawmode = drawmode_t::shape;
+                                            drawitem.drawmode = drawmode_t::shape;
                                             drawitem.shape.fill = node->value.toString();
                                         }
                                         else
                                             if (strcmp(node->key, "w") == 0)
                                             {
-                                                drawitem.shape.drawmode = drawmode_t::shape;
+                                                drawitem.drawmode = drawmode_t::shape;
                                                 drawitem.shape.w = node->value.toNumber();
                                             }
                                             else
                                                 if (strcmp(node->key, "h") == 0)
                                                 {
-                                                    drawitem.shape.drawmode = drawmode_t::shape;
+                                                    drawitem.drawmode = drawmode_t::shape;
                                                     drawitem.shape.h = node->value.toNumber();
                                                 }
                                                 else
@@ -444,7 +439,7 @@ int main(int argc, char* argv[])
 
             ///////////////// the part where we draw the thing
 
-            if (drawitem.text.drawmode == drawmode_t::text)
+            if (drawitem.drawmode == drawmode_t::text)
             {
                 /* cout << "edmcoverlay2: drawing a text" << endl; */
                 if (strcmp(drawitem.text.size, "large") == 0)
@@ -452,19 +447,19 @@ int main(int argc, char* argv[])
 
                 else
                     XSetFont(g_display, gc, normalfont->fid);
-                XSetForeground(g_display, gc, colors.get(drawitem.text.color).pixel);
-                XDrawString(g_display, g_win, gc, SCALE_X(drawitem.text.x), SCALE_Y(drawitem.text.y),
+                XSetForeground(g_display, gc, colors.get(drawitem.color).pixel);
+                XDrawString(g_display, g_win, gc, SCALE_X(drawitem.x), SCALE_Y(drawitem.y),
                             drawitem.text.text, strlen(drawitem.text.text));
             }
             else
             {
                 /* cout << "edmcoverlay2: drawing a shape" << endl; */
-                XSetForeground(g_display, gc, colors.get(drawitem.shape.color).pixel);
+                XSetForeground(g_display, gc, colors.get(drawitem.color).pixel);
                 if (strcmp(drawitem.shape.shape, "rect") == 0)
                 {
                     /* cout << "edmcoverlay2: specifically, a rect" << endl; */
                     // TODO distinct fill/edge colour
-                    XDrawRectangle(g_display, g_win, gc, SCALE_X(drawitem.shape.x), SCALE_Y(drawitem.shape.y), SCALE_W(drawitem.shape.w), SCALE_H(drawitem.shape.h));
+                    XDrawRectangle(g_display, g_win, gc, SCALE_X(drawitem.x), SCALE_Y(drawitem.y), SCALE_W(drawitem.shape.w), SCALE_H(drawitem.shape.h));
                 }
                 else
                     if (strcmp(drawitem.shape.shape, "vect") == 0)
