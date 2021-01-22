@@ -350,8 +350,7 @@ int main(int argc, char* argv[])
         auto socket = server->accept_autoclose();
         std::string request = read_response(*socket);
 
-        /* cout << "edmcoverlay2: overlay got request: " << request << endl; */
-        /* cout << "edmcoverlay2: overlay got request" << endl; */
+        std::cout << "edmcoverlay2: overlay got request: " << request << std::endl;
 
         char* endptr{nullptr};
         JsonValue value;

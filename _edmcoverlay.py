@@ -111,8 +111,11 @@ class _Overlay:
                 data += chunk
                 objects = data.split(b"\n")
                 for obj in objects[:-1]:
-                    msg = json.loads(obj)
-                    self.send_raw(msg)
+                    try:
+                        msg = json.loads(obj)
+                        self.send_raw(msg)
+                    except:
+                        print('Got invalid JSON incoming to python module.')
                 data = objects[-1]
             sock.close()
             if data:
