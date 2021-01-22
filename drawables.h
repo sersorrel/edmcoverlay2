@@ -14,8 +14,6 @@ namespace draw_task
         shape,
     };
 
-    // NB: DO NOT FREE THESE
-    // they are pointers into request2
     struct drawitem_t
     {
         drawmode_t drawmode{drawmode_t::idk};
