@@ -40,9 +40,24 @@ public:
         return ptr.get();
     }
 
+    value_t* operator ->()
+    {
+        return ptr.get();
+    }
+
+    value_t* operator ->() const
+    {
+        return ptr.get();
+    }
+
     operator bool() const
     {
         return static_cast<bool>(ptr);
+    }
+
+    void reset()
+    {
+        ptr.reset();
     }
 
     //this allows to cast to anything, darn unsafe. But macroses use it.

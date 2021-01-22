@@ -37,7 +37,7 @@
 #include "json_message.hh"
 #include "gason.h"
 #include "opaque_ptr.h"
-
+#include "colors_mgr.h"
 
 unsigned short port = 5020;
 
@@ -60,13 +60,6 @@ static int          g_disp_height;
 /* Pixmap   g_bitmap; */
 static Colormap g_colormap;
 
-static XColor red;
-static XColor green;
-static XColor yellow;
-static XColor blue;
-static XColor black;
-static XColor white;
-static XColor transparent;
 
 std::chrono::high_resolution_clock::time_point t1 = std::chrono::high_resolution_clock::now();
 std::chrono::high_resolution_clock::time_point t2 = std::chrono::high_resolution_clock::now();
@@ -132,33 +125,10 @@ static void list_fonts()
 }
 */
 
-// Create a XColor from 3 byte tuple (0 - 255, 0 - 255, 0 - 255).
-static XColor createXColorFromRGBA(short red, short green, short blue, short alpha)
-{
-    XColor color;
-
-    // m_color.red = red * 65535 / 255;
-    color.red = (red * 0xFFFF) / 0xFF;
-    color.green = (green * 0xFFFF) / 0xFF;
-    color.blue = (blue * 0xFFFF) / 0xFF;
-    color.flags = DoRed | DoGreen | DoBlue;
-
-    if (!XAllocColor(g_display, DefaultColormap(g_display, g_screen), &color))
-    {
-        std::cerr << "createXColorFromRGB: Cannot create color" << std::endl;
-        exit(-1);
-    }
-
-    *(&color.pixel) = ((*(&color.pixel)) & 0x00ffffff) | (alpha << 24);
-    return color;
-}
-
 // Create a window
-static void createShapedWindow()
+static void createShapedWindow(const XColor& bgcolor)
 {
     XSetWindowAttributes wattr;
-    XColor bgcolor = createXColorFromRGBA(0, 0, 0, 0);
-
     Window root    = DefaultRootWindow(g_display);
 
     XVisualInfo vinfo;
@@ -198,14 +168,6 @@ static void createShapedWindow()
 
     // Show the window
     XMapWindow(g_display, g_win);
-
-    red = createXColorFromRGBA(255, 0, 0, 255);
-    green = createXColorFromRGBA(0, 255, 0, 255);
-    yellow = createXColorFromRGBA(255, 255, 0, 255);
-    blue = createXColorFromRGBA(0, 0, 255, 255);
-    black = createXColorFromRGBA(0, 0, 0, 100);
-    white = createXColorFromRGBA(255, 255, 255, 255);
-    transparent = createXColorFromRGBA(0, 0, 0, 0);
 }
 
 
@@ -302,79 +264,106 @@ int main(int argc, char* argv[])
     std::cout << "edmcoverlay2: overlay starting up..." << std::endl;
     signal(SIGINT, sighandler);
     signal(SIGTERM, sighandler);
+
     openDisplay();
 
-    createShapedWindow();
+    MyColorMap colors(g_display, g_screen);
+    const auto& white = colors.get("white");
+    const auto& black = colors.get("black");
+    const auto& green = colors.get("green");
+    const auto& transparent = colors.get("transparent");
 
-    tcp_server_t server(port);
+    createShapedWindow(transparent);
+
+    std::shared_ptr<tcp_server_t> server(new tcp_server_t(port), [](tcp_server_t *p)
+    {
+        if (p)
+        {
+            //have no idea why it cannot be called from server destructor, but ok
+            //let's do wrapper
+            p->close();
+            delete p;
+        }
+    });
+
+    const auto allocGlobGC = []()
+    {
+        return opaque_ptr<_XGC>(std::shared_ptr<_XGC>(XCreateGC(g_display, g_win, 0, 0), [](auto * p)
+        {
+            if (p)
+                XFreeGC(g_display, p);
+            XFlush(g_display);
+        }));
+    };
+
+    const auto allocFont = [](const char* fontname)
+    {
+        XFontStruct* font = XLoadQueryFont(g_display, fontname);
+        if (!font)
+        {
+            std::cerr << "Could not load font [" << fontname << "], using some fixed default." << std::endl;
+            font = XLoadQueryFont(g_display, "fixed");
+        }
+
+        return opaque_ptr<XFontStruct>(std::shared_ptr<XFontStruct>(font, [](XFontStruct * p)
+        {
+            if (p)
+                XFreeFont(g_display, p);
+        }));
+    };
+
 
     {
-        GC gc;
-        gc = XCreateGC(g_display, g_win, 0, 0);
+        const auto gc = allocGlobGC();
+        const auto font = allocFont("9x15bold");
+        XSetFont(g_display, gc, font->fid);
+
         XSetBackground(g_display, gc, white.pixel);
         XSetForeground(g_display, gc, transparent.pixel);
         XFillRectangle(g_display, g_win, gc, 0, 0, window_width, window_height);
-        const char* fontname = "9x15bold";
-        XFontStruct* normalfont = XLoadQueryFont(g_display, fontname);
-        if (!normalfont)
-        {
-            fprintf(stderr, "unable to load font %s > using fixed\n", fontname);
-            normalfont = XLoadQueryFont(g_display, "fixed");
-        }
+
         XSetForeground(g_display, gc, black.pixel);
         XFillRectangle(g_display, g_win, gc, 0, 0, 250, 100);
-        const char* text = "edmcoverlay2 overlay process: running!";
         XSetForeground(g_display, gc, green.pixel);
+
+        const char* text = "edmcoverlay2 overlay process: running!";
         XDrawString(g_display, g_win, gc, 10, 60, text, strlen(text));
-        XFreeFont(g_display, normalfont);
-        XFreeGC(g_display, gc);
-        XFlush(g_display);
+
     }
 
     std::cout << "edmcoverlay2: overlay ready." << std::endl;
+
+
+
     while (true)
     {
-        socket_t socket = server.accept();
-        std::string request = read_response(socket);
-        char* request2 = strdup(request.c_str());
+        auto socket = server->accept_autoclose();
+        std::string request = read_response(*socket);
+
         /* cout << "edmcoverlay2: overlay got request: " << request << endl; */
         /* cout << "edmcoverlay2: overlay got request" << endl; */
 
-        char* endptr;
+        char* endptr{nullptr};
         JsonValue value;
         JsonAllocator alloc;
-        if (jsonParse(request2, &endptr, &value, alloc) != JSON_OK)
+        if (jsonParse(const_cast<char*>(request.c_str()), &endptr, &value, alloc) != JSON_OK)
         {
             std::cout << "edmcoverlay2: bad json sent to overlay" << std::endl;
-            free(request2);
-            socket.close();
             continue;
         }
 
-        GC gc = XCreateGC(g_display, g_win, 0, 0);
+        const auto gc = allocGlobGC();
+        const auto normalfont = allocFont("9x15bold");
+        const auto largefont = allocFont("12x24");
+
+
         XSetBackground(g_display, gc, white.pixel);
-
-        const char* fontname = "9x15bold";
-        XFontStruct* normalfont = XLoadQueryFont(g_display, fontname);
-        if (!normalfont)
-        {
-            fprintf(stderr, "unable to load font %s > using fixed\n", fontname);
-            normalfont = XLoadQueryFont(g_display, "fixed");
-        }
-        fontname = "12x24";
-        XFontStruct* largefont = XLoadQueryFont(g_display, fontname);
-        if (!largefont)
-        {
-            fprintf(stderr, "unable to load font %s > using fixed\n", fontname);
-            largefont = XLoadQueryFont(g_display, "fixed");
-        }
-
         XSetForeground(g_display, gc, transparent.pixel);
         XFillRectangle(g_display, g_win, gc, 0, 0, window_width, window_height);
         XSetForeground(g_display, gc, black.pixel);
         XFillRectangle(g_display, g_win, gc, 0, 0, 200, 50);
         XSetForeground(g_display, gc, white.pixel);
-        const char* version = "edmcoverlay2 running";
+        const static char* version = "edmcoverlay2 running";
         XDrawString(g_display, g_win, gc, SCALE_X(0), SCALE_Y(0) - 10, version, strlen(version));
 
         int n = 0;
@@ -461,67 +450,14 @@ int main(int argc, char* argv[])
 
                 else
                     XSetFont(g_display, gc, normalfont->fid);
-                if (drawitem.text.color[0] == '#')
-                {
-                    unsigned int r, g, b;
-                    sscanf(drawitem.text.color, "#%02x%02x%02x", &r, &g, &b);
-                    XSetForeground(g_display, gc, createXColorFromRGBA(r, g, b, 255).pixel);
-                }
-                else
-                    if (strcmp(drawitem.text.color, "red") == 0)
-                        XSetForeground(g_display, gc, red.pixel);
-
-                    else
-                        if (strcmp(drawitem.text.color, "green") == 0)
-                            XSetForeground(g_display, gc, green.pixel);
-
-                        else
-                            if (strcmp(drawitem.text.color, "yellow") == 0)
-                                XSetForeground(g_display, gc, yellow.pixel);
-
-                            else
-                                if (strcmp(drawitem.text.color, "blue") == 0)
-                                    XSetForeground(g_display, gc, blue.pixel);
-
-                                else
-                                    if (strcmp(drawitem.text.color, "black") == 0)
-                                        XSetForeground(g_display, gc, black.pixel);
-
-                                    else
-                                        XSetForeground(g_display, gc, white.pixel);
-                XDrawString(g_display, g_win, gc, SCALE_X(drawitem.text.x), SCALE_Y(drawitem.text.y), drawitem.text.text, strlen(drawitem.text.text));
+                XSetForeground(g_display, gc, colors.get(drawitem.text.color).pixel);
+                XDrawString(g_display, g_win, gc, SCALE_X(drawitem.text.x), SCALE_Y(drawitem.text.y),
+                            drawitem.text.text, strlen(drawitem.text.text));
             }
             else
             {
                 /* cout << "edmcoverlay2: drawing a shape" << endl; */
-                if (drawitem.shape.color[0] == '#')
-                {
-                    unsigned int r, g, b;
-                    sscanf(drawitem.shape.color, "#%02x%02x%02x", &r, &g, &b);
-                    XSetForeground(g_display, gc, createXColorFromRGBA(r, g, b, 255).pixel);
-                }
-                else
-                    if (strcmp(drawitem.shape.color, "red") == 0)
-                        XSetForeground(g_display, gc, red.pixel);
-
-                    else
-                        if (strcmp(drawitem.shape.color, "green") == 0)
-                            XSetForeground(g_display, gc, green.pixel);
-
-                        else
-                            if (strcmp(drawitem.shape.color, "yellow") == 0)
-                                XSetForeground(g_display, gc, yellow.pixel);
-
-                            else
-                                if (strcmp(drawitem.shape.color, "blue") == 0)
-                                    XSetForeground(g_display, gc, blue.pixel);
-
-                                else
-                                    if (strcmp(drawitem.shape.color, "black") == 0)
-                                        XSetForeground(g_display, gc, black.pixel);
-
-                                    else
-                                        XSetForeground(g_display, gc, white.pixel);
+                XSetForeground(g_display, gc, colors.get(drawitem.shape.color).pixel);
                 if (strcmp(drawitem.shape.shape, "rect") == 0)
                 {
                     /* cout << "edmcoverlay2: specifically, a rect" << endl; */
@@ -571,18 +507,7 @@ int main(int argc, char* argv[])
                     }
             }
         }
-
-        /* cout << "edmcoverlay2: done drawing " << std::to_string(n) << " graphics" << endl; */
-
-        XFreeFont(g_display, normalfont);
-        XFreeFont(g_display, largefont);
-        XFreeGC(g_display, gc);
-        XFlush(g_display);
-
-        free(request2);
-        socket.close();
     }
-    server.close();
     return 0;
 }
 
