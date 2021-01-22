@@ -81,9 +81,10 @@ int window_ypos;
 int window_width;
 int window_height;
 
-long event_mask = (StructureNotifyMask|ExposureMask|PropertyChangeMask|EnterWindowMask|LeaveWindowMask|KeyRelease | ButtonPress|ButtonRelease|KeymapStateMask);
+long event_mask = (StructureNotifyMask | ExposureMask | PropertyChangeMask | EnterWindowMask | LeaveWindowMask | KeyRelease | ButtonPress | ButtonRelease | KeymapStateMask);
 
-void allow_input_passthrough (Window w) {
+void allow_input_passthrough (Window w)
+{
     XserverRegion region = XFixesCreateRegion (g_display, NULL, 0);
 
     //XFixesSetWindowShapeRegion (g_display, w, ShapeBounding, 0, 0, 0);
@@ -92,16 +93,17 @@ void allow_input_passthrough (Window w) {
     XFixesDestroyRegion (g_display, region);
 }
 
-void list_fonts() {
+void list_fonts()
+{
     char **fontlist;
     int num_fonts;
     fontlist = XListFonts (g_display, "*", 1000, &num_fonts);
-    for (int i = 0; i < num_fonts; ++i) {
+    for (int i = 0; i < num_fonts; ++i)
         fprintf(stderr, "> %s\n", fontlist[i]);
-    }
 }
 // Create a XColor from 3 byte tuple (0 - 255, 0 - 255, 0 - 255).
-XColor createXColorFromRGB(short red, short green, short blue) {
+XColor createXColorFromRGB(short red, short green, short blue)
+{
     XColor color;
 
     // m_color.red = red * 65535 / 255;
@@ -110,14 +112,16 @@ XColor createXColorFromRGB(short red, short green, short blue) {
     color.blue = (blue * 0xFFFF) / 0xFF;
     color.flags = DoRed | DoGreen | DoBlue;
 
-    if (!XAllocColor(g_display, DefaultColormap(g_display, g_screen), &color)) {
+    if (!XAllocColor(g_display, DefaultColormap(g_display, g_screen), &color))
+    {
         std::cerr << "createXColorFromRGB: Cannot create color" << endl;
         exit(-1);
     }
     return color;
 }
 // Create a XColor from 3 byte tuple (0 - 255, 0 - 255, 0 - 255).
-XColor createXColorFromRGBA(short red, short green, short blue, short alpha) {
+XColor createXColorFromRGBA(short red, short green, short blue, short alpha)
+{
     XColor color;
 
     // m_color.red = red * 65535 / 255;
@@ -126,7 +130,8 @@ XColor createXColorFromRGBA(short red, short green, short blue, short alpha) {
     color.blue = (blue * 0xFFFF) / 0xFF;
     color.flags = DoRed | DoGreen | DoBlue;
 
-    if (!XAllocColor(g_display, DefaultColormap(g_display, g_screen), &color)) {
+    if (!XAllocColor(g_display, DefaultColormap(g_display, g_screen), &color))
+    {
         std::cerr << "createXColorFromRGB: Cannot create color" << endl;
         exit(-1);
     }
@@ -136,7 +141,8 @@ XColor createXColorFromRGBA(short red, short green, short blue, short alpha) {
 }
 
 // Create a window
-void createShapedWindow() {
+void createShapedWindow()
+{
     XSetWindowAttributes wattr;
     XColor bgcolor = createXColorFromRGBA(0, 0, 0, 0);
 
@@ -150,31 +156,31 @@ void createShapedWindow() {
     XSetWindowAttributes attr;
     attr.background_pixmap = None;
     attr.background_pixel = bgcolor.pixel;
-    attr.border_pixel=0;
-    attr.win_gravity=NorthWestGravity;
-    attr.bit_gravity=ForgetGravity;
-    attr.save_under=1;
-    attr.event_mask=BASIC_EVENT_MASK;
-    attr.do_not_propagate_mask=NOT_PROPAGATE_MASK;
-    attr.override_redirect=1; // OpenGL > 0
+    attr.border_pixel = 0;
+    attr.win_gravity = NorthWestGravity;
+    attr.bit_gravity = ForgetGravity;
+    attr.save_under = 1;
+    attr.event_mask = BASIC_EVENT_MASK;
+    attr.do_not_propagate_mask = NOT_PROPAGATE_MASK;
+    attr.override_redirect = 1; // OpenGL > 0
     attr.colormap = g_colormap;
 
     //unsigned long mask = CWBackPixel|CWBorderPixel|CWWinGravity|CWBitGravity|CWSaveUnder|CWEventMask|CWDontPropagate|CWOverrideRedirect;
-    unsigned long mask = CWColormap | CWBorderPixel | CWBackPixel | CWEventMask | CWWinGravity|CWBitGravity | CWSaveUnder | CWDontPropagate | CWOverrideRedirect;
+    unsigned long mask = CWColormap | CWBorderPixel | CWBackPixel | CWEventMask | CWWinGravity | CWBitGravity | CWSaveUnder | CWDontPropagate | CWOverrideRedirect;
 
     g_win = XCreateWindow(g_display, root, window_xpos, window_ypos, window_width, window_height, 0, vinfo.depth, InputOutput, vinfo.visual, mask, &attr);
 
-	/* g_bitmap = XCreateBitmapFromData (g_display, RootWindow(g_display, g_screen), (char *)myshape_bits, myshape_width, myshape_height); */
+    /* g_bitmap = XCreateBitmapFromData (g_display, RootWindow(g_display, g_screen), (char *)myshape_bits, myshape_width, myshape_height); */
 
     //XShapeCombineMask(g_display, g_win, ShapeBounding, 900, 500, g_bitmap, ShapeSet);
     XShapeCombineMask(g_display, g_win, ShapeInput, 0, 0, None, ShapeSet );
 
     // We want shape-changed event too
-    #define SHAPE_MASK ShapeNotifyMask
+#define SHAPE_MASK ShapeNotifyMask
     XShapeSelectInput (g_display, g_win, SHAPE_MASK );
 
     // Tell the Window Manager not to draw window borders (frame) or title.
-	wattr.override_redirect = 1;
+    wattr.override_redirect = 1;
     XChangeWindowAttributes(g_display, g_win, CWOverrideRedirect, &wattr);
     allow_input_passthrough(g_win);
 
@@ -191,10 +197,12 @@ void createShapedWindow() {
 }
 
 
-void openDisplay() {
+void openDisplay()
+{
     g_display = XOpenDisplay(0);
 
-    if (!g_display) {
+    if (!g_display)
+    {
         cerr << "Failed to open X display" << endl;
         exit(-1);
     }
@@ -205,14 +213,16 @@ void openDisplay() {
     g_disp_height = DisplayHeight(g_display, g_screen);
 
     // Has shape extions?
-    if (!XShapeQueryExtension (g_display, &shape_event_base, &shape_error_base)) {
-       cerr << "NO shape extension in your system !" << endl;
-       exit (-1);
+    if (!XShapeQueryExtension (g_display, &shape_event_base, &shape_error_base))
+    {
+        cerr << "NO shape extension in your system !" << endl;
+        exit (-1);
     }
 }
 
 
-enum class drawmode_t {
+enum class drawmode_t
+{
     idk,
     text,
     shape,
@@ -220,8 +230,10 @@ enum class drawmode_t {
 
 // NB: DO NOT FREE THESE
 // they are pointers into request2
-union drawitem_t {
-    struct drawtext_t {
+union drawitem_t
+{
+    struct drawtext_t
+    {
         // common
         drawmode_t drawmode;
         int x;
@@ -231,7 +243,8 @@ union drawitem_t {
         char* text;
         char* size;
     } text;
-    struct drawshape_t {
+    struct drawshape_t
+    {
         // common
         drawmode_t drawmode;
         int x;
@@ -242,22 +255,26 @@ union drawitem_t {
         char* fill;
         int w;
         int h;
-	JsonNode* vect;
+        JsonNode* vect;
     } shape;
 };
 
 
-void sighandler(int signum) {
+void sighandler(int signum)
+{
     cout << "edmcoverlay2: got signal " << signum << endl;
-    if ((signum == SIGINT) || (signum == SIGTERM)) {
+    if ((signum == SIGINT) || (signum == SIGTERM))
+    {
         cout << "edmcoverlay2: SIGINT/SIGTERM, exiting" << endl;
         exit(0);
     }
 }
 
 
-int main(int argc, char* argv[]) {
-    if (argc != 5) {
+int main(int argc, char* argv[])
+{
+    if (argc != 5)
+    {
         cout << "Usage: overlay X Y W H" << endl;
         return 1;
     }
@@ -283,7 +300,8 @@ int main(int argc, char* argv[]) {
         XFillRectangle(g_display, g_win, gc, 0, 0, window_width, window_height);
         const char* fontname = "9x15bold";
         XFontStruct* normalfont = XLoadQueryFont(g_display, fontname);
-        if (!normalfont) {
+        if (!normalfont)
+        {
             fprintf(stderr, "unable to load font %s > using fixed\n", fontname);
             normalfont = XLoadQueryFont(g_display, "fixed");
         }
@@ -298,7 +316,8 @@ int main(int argc, char* argv[]) {
     }
 
     cout << "edmcoverlay2: overlay ready." << endl;
-    while (true) {
+    while (true)
+    {
         socket_t socket = server.accept();
         std::string request = read_response(socket);
         char* request2 = strdup(request.c_str());
@@ -308,7 +327,8 @@ int main(int argc, char* argv[]) {
         char* endptr;
         JsonValue value;
         JsonAllocator alloc;
-        if (jsonParse(request2, &endptr, &value, alloc) != JSON_OK) {
+        if (jsonParse(request2, &endptr, &value, alloc) != JSON_OK)
+        {
             cout << "edmcoverlay2: bad json sent to overlay" << endl;
             free(request2);
             socket.close();
@@ -322,13 +342,15 @@ int main(int argc, char* argv[]) {
 
         const char* fontname = "9x15bold";
         XFontStruct* normalfont = XLoadQueryFont(g_display, fontname);
-        if (!normalfont) {
+        if (!normalfont)
+        {
             fprintf(stderr, "unable to load font %s > using fixed\n", fontname);
             normalfont = XLoadQueryFont(g_display, "fixed");
         }
         fontname = "12x24";
         XFontStruct* largefont = XLoadQueryFont(g_display, fontname);
-        if (!largefont) {
+        if (!largefont)
+        {
             fprintf(stderr, "unable to load font %s > using fixed\n", fontname);
             largefont = XLoadQueryFont(g_display, "fixed");
         }
@@ -338,11 +360,12 @@ int main(int argc, char* argv[]) {
         XSetForeground(g_display, gc, black.pixel);
         XFillRectangle(g_display, g_win, gc, 0, 0, 200, 50);
         XSetForeground(g_display, gc, white.pixel);
-	const char* version = "edmcoverlay2 running";
-	XDrawString(g_display, g_win, gc, SCALE_X(0), SCALE_Y(0) - 10, version, strlen(version));
+        const char* version = "edmcoverlay2 running";
+        XDrawString(g_display, g_win, gc, SCALE_X(0), SCALE_Y(0) - 10, version, strlen(version));
 
         int n = 0;
-        for (auto v : value) {
+        for (auto v : value)
+        {
             n++;
             /* cout << "edmcoverlay2: overlay processing graphics number " << std::to_string(++n) << endl; */
             /* text message: id, text, color, x, y, ttl, size
@@ -352,126 +375,186 @@ int main(int argc, char* argv[]) {
             * size: "normal", "large"
             */
             drawitem_t drawitem;
-            for (JsonNode* node = v->value.toNode(); node != nullptr; node = node->next) {
+            for (JsonNode* node = v->value.toNode(); node != nullptr; node = node->next)
+            {
                 /* cout << "got key: " << node->key << endl; */
                 // common
-                if (strcmp(node->key ,"x") == 0) {
+                if (strcmp(node->key, "x") == 0)
                     drawitem.text.x = node->value.toNumber();
-                } else if (strcmp(node->key ,"y") == 0) {
-                    drawitem.text.y = node->value.toNumber();
-                } else if (strcmp(node->key ,"color") == 0) {
-                    drawitem.text.color = node->value.toString();
-                // text
-                } else if (strcmp(node->key ,"text") == 0) {
-                    drawitem.text.drawmode = drawmode_t::text;
-                    drawitem.text.text = node->value.toString();
-                } else if (strcmp(node->key ,"size") == 0) {
-                    drawitem.text.drawmode = drawmode_t::text;
-                    drawitem.text.size = node->value.toString();
-                // shape
-                } else if (strcmp(node->key ,"shape") == 0) {
-                    drawitem.shape.drawmode = drawmode_t::shape;
-                    drawitem.shape.shape = node->value.toString();
-                } else if (strcmp(node->key ,"fill") == 0) {
-                    drawitem.shape.drawmode = drawmode_t::shape;
-                    drawitem.shape.fill = node->value.toString();
-                } else if (strcmp(node->key ,"w") == 0) {
-                    drawitem.shape.drawmode = drawmode_t::shape;
-                    drawitem.shape.w = node->value.toNumber();
-                } else if (strcmp(node->key ,"h") == 0) {
-                    drawitem.shape.drawmode = drawmode_t::shape;
-                    drawitem.shape.h = node->value.toNumber();
-                } else if (strcmp(node->key, "vector") == 0) {
-                    drawitem.shape.vect = node->value.toNode();
-                } else {
-                    cout << "bad key: " << node->key << endl;
-                }
+
+                else
+                    if (strcmp(node->key, "y") == 0)
+                        drawitem.text.y = node->value.toNumber();
+
+                    else
+                        if (strcmp(node->key, "color") == 0)
+                        {
+                            drawitem.text.color = node->value.toString();
+                            // text
+                        }
+                        else
+                            if (strcmp(node->key, "text") == 0)
+                            {
+                                drawitem.text.drawmode = drawmode_t::text;
+                                drawitem.text.text = node->value.toString();
+                            }
+                            else
+                                if (strcmp(node->key, "size") == 0)
+                                {
+                                    drawitem.text.drawmode = drawmode_t::text;
+                                    drawitem.text.size = node->value.toString();
+                                    // shape
+                                }
+                                else
+                                    if (strcmp(node->key, "shape") == 0)
+                                    {
+                                        drawitem.shape.drawmode = drawmode_t::shape;
+                                        drawitem.shape.shape = node->value.toString();
+                                    }
+                                    else
+                                        if (strcmp(node->key, "fill") == 0)
+                                        {
+                                            drawitem.shape.drawmode = drawmode_t::shape;
+                                            drawitem.shape.fill = node->value.toString();
+                                        }
+                                        else
+                                            if (strcmp(node->key, "w") == 0)
+                                            {
+                                                drawitem.shape.drawmode = drawmode_t::shape;
+                                                drawitem.shape.w = node->value.toNumber();
+                                            }
+                                            else
+                                                if (strcmp(node->key, "h") == 0)
+                                                {
+                                                    drawitem.shape.drawmode = drawmode_t::shape;
+                                                    drawitem.shape.h = node->value.toNumber();
+                                                }
+                                                else
+                                                    if (strcmp(node->key, "vector") == 0)
+                                                        drawitem.shape.vect = node->value.toNode();
+
+                                                    else
+                                                        cout << "bad key: " << node->key << endl;
             }
 
             ///////////////// the part where we draw the thing
 
-            if (drawitem.text.drawmode == drawmode_t::text) {
+            if (drawitem.text.drawmode == drawmode_t::text)
+            {
                 /* cout << "edmcoverlay2: drawing a text" << endl; */
-                if (strcmp(drawitem.text.size, "large") == 0) {
+                if (strcmp(drawitem.text.size, "large") == 0)
                     XSetFont(g_display, gc, largefont->fid);
-                } else {
+
+                else
                     XSetFont(g_display, gc, normalfont->fid);
-                }
-                if (drawitem.text.color[0] == '#') {
+                if (drawitem.text.color[0] == '#')
+                {
                     unsigned int r, g, b;
                     sscanf(drawitem.text.color, "#%02x%02x%02x", &r, &g, &b);
                     XSetForeground(g_display, gc, createXColorFromRGBA(r, g, b, 255).pixel);
-                } else if (strcmp(drawitem.text.color, "red") == 0) {
-                    XSetForeground(g_display, gc, red.pixel);
-                } else if (strcmp(drawitem.text.color, "green") == 0) {
-                    XSetForeground(g_display, gc, green.pixel);
-                } else if (strcmp(drawitem.text.color, "yellow") == 0) {
-                    XSetForeground(g_display, gc, yellow.pixel);
-                } else if (strcmp(drawitem.text.color, "blue") == 0) {
-                    XSetForeground(g_display, gc, blue.pixel);
-                } else if (strcmp(drawitem.text.color, "black") == 0) {
-                    XSetForeground(g_display, gc, black.pixel);
-                } else {
-                    XSetForeground(g_display, gc, white.pixel);
                 }
+                else
+                    if (strcmp(drawitem.text.color, "red") == 0)
+                        XSetForeground(g_display, gc, red.pixel);
+
+                    else
+                        if (strcmp(drawitem.text.color, "green") == 0)
+                            XSetForeground(g_display, gc, green.pixel);
+
+                        else
+                            if (strcmp(drawitem.text.color, "yellow") == 0)
+                                XSetForeground(g_display, gc, yellow.pixel);
+
+                            else
+                                if (strcmp(drawitem.text.color, "blue") == 0)
+                                    XSetForeground(g_display, gc, blue.pixel);
+
+                                else
+                                    if (strcmp(drawitem.text.color, "black") == 0)
+                                        XSetForeground(g_display, gc, black.pixel);
+
+                                    else
+                                        XSetForeground(g_display, gc, white.pixel);
                 XDrawString(g_display, g_win, gc, SCALE_X(drawitem.text.x), SCALE_Y(drawitem.text.y), drawitem.text.text, strlen(drawitem.text.text));
-            } else {
+            }
+            else
+            {
                 /* cout << "edmcoverlay2: drawing a shape" << endl; */
-                if (drawitem.shape.color[0] == '#') {
+                if (drawitem.shape.color[0] == '#')
+                {
                     unsigned int r, g, b;
                     sscanf(drawitem.shape.color, "#%02x%02x%02x", &r, &g, &b);
                     XSetForeground(g_display, gc, createXColorFromRGBA(r, g, b, 255).pixel);
-                } else if (strcmp(drawitem.shape.color, "red") == 0) {
-                    XSetForeground(g_display, gc, red.pixel);
-                } else if (strcmp(drawitem.shape.color, "green") == 0) {
-                    XSetForeground(g_display, gc, green.pixel);
-                } else if (strcmp(drawitem.shape.color, "yellow") == 0) {
-                    XSetForeground(g_display, gc, yellow.pixel);
-                } else if (strcmp(drawitem.shape.color, "blue") == 0) {
-                    XSetForeground(g_display, gc, blue.pixel);
-                } else if (strcmp(drawitem.shape.color, "black") == 0) {
-                    XSetForeground(g_display, gc, black.pixel);
-                } else {
-                    XSetForeground(g_display, gc, white.pixel);
                 }
-                if (strcmp(drawitem.shape.shape, "rect") == 0) {
+                else
+                    if (strcmp(drawitem.shape.color, "red") == 0)
+                        XSetForeground(g_display, gc, red.pixel);
+
+                    else
+                        if (strcmp(drawitem.shape.color, "green") == 0)
+                            XSetForeground(g_display, gc, green.pixel);
+
+                        else
+                            if (strcmp(drawitem.shape.color, "yellow") == 0)
+                                XSetForeground(g_display, gc, yellow.pixel);
+
+                            else
+                                if (strcmp(drawitem.shape.color, "blue") == 0)
+                                    XSetForeground(g_display, gc, blue.pixel);
+
+                                else
+                                    if (strcmp(drawitem.shape.color, "black") == 0)
+                                        XSetForeground(g_display, gc, black.pixel);
+
+                                    else
+                                        XSetForeground(g_display, gc, white.pixel);
+                if (strcmp(drawitem.shape.shape, "rect") == 0)
+                {
                     /* cout << "edmcoverlay2: specifically, a rect" << endl; */
                     // TODO distinct fill/edge colour
                     XDrawRectangle(g_display, g_win, gc, SCALE_X(drawitem.shape.x), SCALE_Y(drawitem.shape.y), SCALE_W(drawitem.shape.w), SCALE_H(drawitem.shape.h));
-                } else if (strcmp(drawitem.shape.shape, "vect") == 0) {
-                    /* cout << "edmcoverlay2: specifically, a vect" << endl; */
-                    // TODO: make this less gross
+                }
+                else
+                    if (strcmp(drawitem.shape.shape, "vect") == 0)
+                    {
+                        /* cout << "edmcoverlay2: specifically, a vect" << endl; */
+                        // TODO: make this less gross
 #define UNINIT_COORD 1000000
-                    int x1 = UNINIT_COORD, y1 = UNINIT_COORD, x2 = UNINIT_COORD, y2 = UNINIT_COORD;
-                    JsonNode* vect_ = drawitem.shape.vect;
-                    for (JsonNode* node_ = vect_; node_ != nullptr; node_ = node_->next) {
-                        // node_ is a point
-                        int x, y;
-                        for (auto z : node_->value) {
-                            if (strcmp(z->key, "x") == 0) {
-                                x = z->value.toNumber();
-                            } else if (strcmp(z->key, "y") == 0) {
-                                y = z->value.toNumber();
+                        int x1 = UNINIT_COORD, y1 = UNINIT_COORD, x2 = UNINIT_COORD, y2 = UNINIT_COORD;
+                        JsonNode* vect_ = drawitem.shape.vect;
+                        for (JsonNode* node_ = vect_; node_ != nullptr; node_ = node_->next)
+                        {
+                            // node_ is a point
+                            int x, y;
+                            for (auto z : node_->value)
+                            {
+                                if (strcmp(z->key, "x") == 0)
+                                    x = z->value.toNumber();
+
+                                else
+                                    if (strcmp(z->key, "y") == 0)
+                                        y = z->value.toNumber();
                             }
-                        }
-                        if (x1 == UNINIT_COORD) {
-                            x1 = x;
-                            y1 = y;
-                            continue;
-                        }
-                        if (x2 == UNINIT_COORD) {
+                            if (x1 == UNINIT_COORD)
+                            {
+                                x1 = x;
+                                y1 = y;
+                                continue;
+                            }
+                            if (x2 == UNINIT_COORD)
+                            {
+                                x2 = x;
+                                y2 = y;
+                                XDrawLine(g_display, g_win, gc, SCALE_X(x1), SCALE_Y(y1), SCALE_X(x2), SCALE_Y(y2));
+                                continue;
+                            }
+                            x1 = x2;
+                            y1 = y2;
                             x2 = x;
                             y2 = y;
                             XDrawLine(g_display, g_win, gc, SCALE_X(x1), SCALE_Y(y1), SCALE_X(x2), SCALE_Y(y2));
-                            continue;
                         }
-                        x1 = x2;
-                        y1 = y2;
-                        x2 = x;
-                        y2 = y;
-                        XDrawLine(g_display, g_win, gc, SCALE_X(x1), SCALE_Y(y1), SCALE_X(x2), SCALE_Y(y2));
                     }
-                }
             }
         }
 
