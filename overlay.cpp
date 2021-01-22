@@ -29,14 +29,15 @@
 #include <X11/extensions/Xfixes.h>
 #include <math.h>
 #include <memory>
-
+#include <csignal>
 #include <fstream>
 #include <stdio.h>
 
 #include "socket.hh"
 #include "json_message.hh"
 #include "gason.h"
-#include <csignal>
+#include "opaque_ptr.h"
+
 
 unsigned short port = 5020;
 
@@ -48,11 +49,13 @@ constexpr static long BASIC_EVENT_MASK = (StructureNotifyMask | ExposureMask | P
 constexpr static long NOT_PROPAGATE_MASK = (KeyPressMask | KeyReleaseMask | ButtonPressMask |
         ButtonReleaseMask | PointerMotionMask | ButtonMotionMask);
 
-static Display *g_display;
-static int      g_screen;
-static Window   g_win;
-static int      g_disp_width;
-static int      g_disp_height;
+
+opaque_ptr<Display> g_display;
+
+static int          g_screen;
+static Window       g_win;
+static int          g_disp_width;
+static int          g_disp_height;
 
 /* Pixmap   g_bitmap; */
 static Colormap g_colormap;
@@ -221,7 +224,11 @@ void createShapedWindow()
 
 void openDisplay()
 {
-    g_display = XOpenDisplay(0);
+    g_display = std::shared_ptr<Display>(XOpenDisplay(0), [](Display * p)
+    {
+        if (p)
+            XCloseDisplay(p);
+    });
 
     if (!g_display)
     {
@@ -316,7 +323,6 @@ int main(int argc, char* argv[])
 
     {
         GC gc;
-        XGCValues gcv;
         gc = XCreateGC(g_display, g_win, 0, 0);
         XSetBackground(g_display, gc, white.pixel);
         XSetForeground(g_display, gc, transparent.pixel);
