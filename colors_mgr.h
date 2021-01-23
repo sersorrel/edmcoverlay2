@@ -9,7 +9,7 @@
 #include "opaque_ptr.h"
 #include "cm_ctors.h"
 
-class MyColorMap
+class MyXOverlayColorMap
 {
 private:
     const opaque_ptr<Display>& g_display;
@@ -24,12 +24,12 @@ private:
     std::map<std::string, XColor> known_colors;
 
 public:
-    NO_COPYMOVE(MyColorMap);
-    ~MyColorMap() = default;
-    MyColorMap() = delete;
+    NO_COPYMOVE(MyXOverlayColorMap);
+    ~MyXOverlayColorMap() = default;
+    MyXOverlayColorMap() = delete;
 
     //we take reference here to object, so this map must be destroyed prior object destroyed
-    MyColorMap(const opaque_ptr<Display>& g_display, int g_screen):
+    MyXOverlayColorMap(const opaque_ptr<Display>& g_display, int g_screen):
         g_display(g_display),
         g_screen(g_screen)
     {

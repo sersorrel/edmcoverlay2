@@ -4,7 +4,7 @@ CXXFLAGS=-pedantic-errors -Wall -Werror -fstack-protector-all -O3 -march=native 
 LDFLAGS=-lX11 -lXfixes -lXext
 all: overlay
 
-overlay: overlay.o socket.o json_message.o
+overlay: overlay.o socket.o json_message.o xoverlayoutput.o
 	$(CXX) $(LDFLAGS) $^ -o $@
 
 #this rules describes ANY .c file to be compiled into .o file
