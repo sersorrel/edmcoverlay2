@@ -1,6 +1,7 @@
 #pragma once
 #include <string>
 #include <iostream>
+#include <list>
 #include "json.hpp"
 
 namespace draw_task
@@ -40,13 +41,15 @@ namespace draw_task
         } shape;
     };
 
+    using draw_list = std::list<drawitem_t>;
+
     /* text message: id, text, color, x, y, ttl, size
     * shape message: id, shape, color, fill, x, y, w, h, ttl
     * color: "red", "yellow", "green", "blue", "#rrggbb"
     * shape: "rect"
     * size: "normal", "large"
     */
-    inline drawitem_t parseJsonString(const std::string& src)
+    inline draw_list parseJsonString(const std::string& src)
     {
         //hate chained IFs, lets do it more readable....
 #define FUNC_PARAMS const json& node, drawitem_t& drawitem
@@ -71,32 +74,38 @@ namespace draw_task
 #undef LHDR
 #undef FUNC_PARAMS
 
-        drawitem_t drawitem;
+        draw_list res;
         if (!src.empty())
         {
-            const auto jsrc = json::parse(src)[0]; //fixme: python sends array of objects, where there is 1 object only, i.e. [{....}]
-            for (const auto& kv : jsrc.items())
+            const auto jsrc = json::parse(src);
+            for (const auto& arr_elem : jsrc)
             {
-
-                //std::cout << "Key: [" << kv.key() << "]" << std::endl;
-
-                const auto it = processors.find(kv.key());
-                if (it != processors.end())
+                drawitem_t drawitem;
+                for (const auto& kv : arr_elem.items())
                 {
-                    const auto prev_mode  = drawitem.drawmode;
-                    it->second(kv.value(), drawitem);
-                    if (prev_mode != drawmode_t::idk && drawitem.drawmode != prev_mode)
+
+                    //std::cout << "Key: [" << kv.key() << "]" << std::endl;
+
+                    const auto it = processors.find(kv.key());
+                    if (it != processors.end())
                     {
-                        std::cout << "Mode was double switched text/shape in the same JSON. Ignoring."  << std::endl;
-                        drawitem.drawmode = drawmode_t::idk;
-                        break;
+                        const auto prev_mode  = drawitem.drawmode;
+                        it->second(kv.value(), drawitem);
+                        if (prev_mode != drawmode_t::idk && drawitem.drawmode != prev_mode)
+                        {
+                            std::cout << "Mode was double switched text/shape in the same JSON. Ignoring."  << std::endl;
+                            drawitem.drawmode = drawmode_t::idk;
+                            break;
+                        }
                     }
+                    else
+                        std::cout << "bad key: " << kv.key() << std::endl;
                 }
-                else
-                    std::cout << "bad key: " << kv.key() << std::endl;
+                if (drawitem.drawmode != draw_task::drawmode_t::idk)
+                    res.push_back(std::move(drawitem));
             }
         }
-        return drawitem;
+        return res;
     }
 
     //generates lines (x1;y1)-(x2;y2) and calls user callback with it

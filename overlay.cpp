@@ -56,27 +56,27 @@ int main(int argc, char* argv[])
         auto socket = server->accept_autoclose();
         const std::string request = read_response(*socket);
 
-        //std::cout << "edmcoverlay2: overlay got request: " << request << std::endl;
+        std::cout << "edmcoverlay2: overlay got request: " << request << std::endl;
 
         drawer.cleanFrame();
         drawer.showVersionString("edmcoverlay2 running", "white");
 
-        draw_task::drawitem_t drawitem;
+        draw_task::draw_list draws;
         try
         {
-            drawitem = draw_task::parseJsonString(request);
+            draws = draw_task::parseJsonString(request);
         }
         catch (std::exception& e)
         {
             std::cerr << "Json parse failed with message: " << e.what() << std::endl;
-            drawitem.drawmode = draw_task::drawmode_t::idk;
+            draws.clear();
         }
         catch (...)
         {
             std::cerr << "Json parse failed with uknnown reason." << std::endl;
-            drawitem.drawmode = draw_task::drawmode_t::idk;
+            draws.clear();
         }
-        if (drawitem.drawmode != draw_task::drawmode_t::idk)
+        for (const auto& drawitem : draws)
             drawer.draw(drawitem);
 
         drawer.flushFrame();
