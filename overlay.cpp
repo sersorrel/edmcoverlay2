@@ -1,20 +1,4 @@
-/*
- * Copyright (c) 2020 ericek111 <erik.brocko@letemsvetemapplem.eu>.
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, version 3.
- *
- * This program is distributed in the hope that it will be useful, but
- * WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
- * General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program. If not, see <http://www.gnu.org/licenses/>.
- */
-
-// Modified for edmcoverlay2. Such modifications are copyright © 2020 Ash Holland.
+//this file was heavy simplified by alexzkhr@gmail.com in 2021
 
 #include <iostream>
 #include <stdlib.h>
