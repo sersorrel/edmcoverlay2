@@ -112,8 +112,22 @@ namespace draw_task
             {
                 // node_ is a point
                 const auto& val = node_.value();
-                int x = val["x"].get<int>();
-                int y = val["y"].get<int>();
+                int x, y;
+                try
+                {
+                    x = val["x"].get<int>();
+                    y = val["y"].get<int>();
+                }
+                catch (std::exception& e)
+                {
+                    std::cerr << "Json-point parse failed with message: " << e.what() << std::endl;
+                    break;
+                }
+                catch (...)
+                {
+                    std::cerr << "Json-point parse failed with uknnown reason." << std::endl;
+                    break;
+                }
 
                 if (x1 == UNINIT_COORD)
                 {
