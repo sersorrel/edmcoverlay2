@@ -98,4 +98,44 @@ namespace draw_task
         }
         return drawitem;
     }
+
+    //generates lines (x1;y1)-(x2;y2) and calls user callback with it
+    //to avoid copy-paste of code for different output devices
+    template <class Callback>
+    inline bool ForEachVectorPointsPair(const drawitem_t& src, const Callback& func)
+    {
+        if (src.drawmode == draw_task::drawmode_t::shape && src.shape.shape == "vect")
+        {
+            constexpr static int UNINIT_COORD = 1000000;
+            int x1 = UNINIT_COORD, y1 = UNINIT_COORD, x2 = UNINIT_COORD, y2 = UNINIT_COORD;
+            for (const auto& node_ : src.shape.vect.items())
+            {
+                // node_ is a point
+                const auto& val = node_.value();
+                int x = val["x"].get<int>();
+                int y = val["y"].get<int>();
+
+                if (x1 == UNINIT_COORD)
+                {
+                    x1 = x;
+                    y1 = y;
+                    continue;
+                }
+                if (x2 == UNINIT_COORD)
+                {
+                    x2 = x;
+                    y2 = y;
+                    func(x1, y1, x2, y2);
+                    continue;
+                }
+                x1 = x2;
+                y1 = y2;
+                x2 = x;
+                y2 = y;
+                func(x1, y1, x2, y2);
+            }
+            return true;
+        }
+        return false;
+    }
 }

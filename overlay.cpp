@@ -318,7 +318,7 @@ int main(int argc, char* argv[])
         auto socket = server->accept_autoclose();
         std::string request = read_response(*socket);
 
-        std::cout << "edmcoverlay2: overlay got request: " << request << std::endl;
+        //std::cout << "edmcoverlay2: overlay got request: " << request << std::endl;
 
         const auto gc = allocGlobGC();
         print_version(gc, white, version_w, "edmcoverlay2 running");
@@ -355,47 +355,18 @@ int main(int argc, char* argv[])
         {
             /* cout << "edmcoverlay2: drawing a shape" << endl; */
             XSetForeground(g_display, gc, colors.get(drawitem.color).pixel);
-            if (drawitem.shape.shape == "rect")
+
+            const bool had_vec = draw_task::ForEachVectorPointsPair(drawitem, [&gc](int x1, int y1, int x2, int y2)
+            {
+                XDrawLine(g_display, g_win, gc, SCALE_X(x1), SCALE_Y(y1), SCALE_X(x2), SCALE_Y(y2));
+            });
+
+            if (!had_vec && drawitem.shape.shape == "rect")
             {
                 /* cout << "edmcoverlay2: specifically, a rect" << endl; */
                 // TODO distinct fill/edge colour
                 XDrawRectangle(g_display, g_win, gc, SCALE_X(drawitem.x), SCALE_Y(drawitem.y), SCALE_W(drawitem.shape.w), SCALE_H(drawitem.shape.h));
             }
-            else
-                if (drawitem.shape.shape == "vect")
-                {
-                    /* cout << "edmcoverlay2: specifically, a vect" << endl; */
-                    // TODO: make this less gross
-
-                    constexpr static int UNINIT_COORD = 1000000;
-                    int x1 = UNINIT_COORD, y1 = UNINIT_COORD, x2 = UNINIT_COORD, y2 = UNINIT_COORD;
-                    for (const auto& node_ : drawitem.shape.vect.items())
-                    {
-                        // node_ is a point
-                        const auto& val = node_.value();
-                        int x = val["x"].get<int>();
-                        int y = val["y"].get<int>();
-
-                        if (x1 == UNINIT_COORD)
-                        {
-                            x1 = x;
-                            y1 = y;
-                            continue;
-                        }
-                        if (x2 == UNINIT_COORD)
-                        {
-                            x2 = x;
-                            y2 = y;
-                            XDrawLine(g_display, g_win, gc, SCALE_X(x1), SCALE_Y(y1), SCALE_X(x2), SCALE_Y(y2));
-                            continue;
-                        }
-                        x1 = x2;
-                        y1 = y2;
-                        x2 = x;
-                        y2 = y;
-                        XDrawLine(g_display, g_win, gc, SCALE_X(x1), SCALE_Y(y1), SCALE_X(x2), SCALE_Y(y2));
-                    }
-                }
         }
     }
     return 0;
