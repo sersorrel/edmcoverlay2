@@ -106,7 +106,7 @@ namespace draw_task
     {
         if (src.drawmode == draw_task::drawmode_t::shape && src.shape.shape == "vect")
         {
-            constexpr static int UNINIT_COORD = 1000000;
+            constexpr static int UNINIT_COORD = std::numeric_limits<int>::max();
             int x1 = UNINIT_COORD, y1 = UNINIT_COORD, x2 = UNINIT_COORD, y2 = UNINIT_COORD;
             for (const auto& node_ : src.shape.vect.items())
             {
