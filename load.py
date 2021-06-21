@@ -1,5 +1,6 @@
 """Totally definitely EDMCOverlay."""
 
+import importlib
 import logging
 from pathlib import Path
 from subprocess import Popen
@@ -16,10 +17,10 @@ plugin_name = Path(__file__).parent.name
 logger = logging.getLogger(f"{appname}.{plugin_name}")
 
 
-logger.debug("edmcoverlay2: loading plugin, importing lib")
-import edmcoverlay
+base_dir = Path(__file__).parent
+logger.debug("edmcoverlay2: loading plugin, we are: %s", repr(base_dir))
+edmcoverlay = importlib.import_module(base_dir.name)
 logger.debug("edmcoverlay2: got lib: %s", repr(edmcoverlay))
-import edmcoverlay._edmcoverlay
 logger.debug("edmcoverlay2: got internal lib: %s", repr(edmcoverlay._edmcoverlay))
 
 overlay_process: Popen = None

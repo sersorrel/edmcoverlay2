@@ -5,7 +5,10 @@
 ## Installation
 
 - Clone the repo into your EDMC plugins directory
-  - NB: you *must* name the directory `edmcoverlay`, not `edmcoverlay2`
+  - NB: you *should not* name the directory `edmcoverlay2`. Typically,
+    you should name it `edmcoverlay`, for compatibility with as many
+    plugins as possible. For some plugins, you may need to rename it to
+    `EDMCOverlay` instead. You cannot currently use both names at once.
 - Install the dependencies (mostly X11 development headers; on Ubuntu,
   the `xorg-dev` package may be sufficient)
 - Run `make`
