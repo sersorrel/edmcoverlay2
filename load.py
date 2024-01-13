@@ -2,6 +2,7 @@
 
 import importlib
 import logging
+from os import environ
 from pathlib import Path
 from subprocess import Popen
 import tkinter as tk
@@ -32,7 +33,10 @@ height_var: tk.IntVar
 
 def find_overlay_binary() -> Path:
     our_directory = Path(__file__).resolve().parent
-    overlay_binary = our_directory / "overlay"
+    if environ['XDG_SESSION_TYPE'] == 'wayland':
+        overlay_binary = our_directory / 'Wayland' / 'overlay.py'
+    else:
+        overlay_binary = our_directory / 'overlay'
     if not overlay_binary.exists():
         plug.show_error("edmcoverlay2 unable to find overlay binary")
         raise RuntimeError("edmcoverlay2 unable to find overlay binary")
