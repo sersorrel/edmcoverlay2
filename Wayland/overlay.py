@@ -56,20 +56,21 @@ class WaylandOverlay(object):
         self._width = width
         self._height = height
         self._app = app
-        self._app.connect('activate', self.on_activate)
+        self._app.connect('activate', self._populate_widgets_on_activate)
         self._messages = messages
         self._angle = 0 
 
     def close(self):
         self._window.close()
         
-    def on_activate(self, app):
+    def _populate_widgets_on_activate(self, app):
         css_provider = Gtk.CssProvider.new()
         css_provider.load_from_file(Gio.File.new_for_path(bytes(Path(__file__).resolve().parent / 'overlay.css')))
         Gtk.StyleContext.add_provider_for_display(Gdk.Display.get_default(), css_provider, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION)
         
         self._window = Gtk.Window(application=app)
         self._window.set_default_size(self._width, self._height)
+        self._window.connect('realize', self._disable_input_on_realize)
 
         LayerShell.init_for_window(self._window)
         LayerShell.set_layer(self._window, LayerShell.Layer.OVERLAY)
@@ -82,8 +83,6 @@ class WaylandOverlay(object):
         self._drawing = Gtk.DrawingArea()
         self._drawing.set_size_request(self._width, self._height)
         self._drawing.set_draw_func(self._draw)
-        # # self._drawing.add_events(Gdk.EventMask.BUTTON_PRESS_MASK)
-        # self._drawing.connect('button-press-event', self._on_mouse_pressed)
         self._main_box.prepend(self._drawing)
 
         # Tell the drawing area to render
@@ -93,12 +92,17 @@ class WaylandOverlay(object):
         # self._button = Gtk.Button(label="Close")
         # self._button.connect('clicked', lambda x: self._window.close())
         # self._main_box.append(self._button)
-        # self._button.set_opacity(1)
         
         self._window.present()
 
         GLib.timeout_add(1000 / 2, self.refresh_screen)
 
+    def _disable_input_on_realize(self, widget):
+        #default RectangleInt is (0, 0, 0, 0)
+        region = cairo.Region(cairo.RectangleInt())
+        surface = self._window.get_surface()
+        surface.set_input_region(region)
+        
     def refresh_screen(self):
         logging.debug('refresh')
         logging.info(f'# of msgs: {len(list(self._messages.get_messages()))}')
