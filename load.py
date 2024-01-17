@@ -154,3 +154,20 @@ def prefs_changed(cmdr: str, is_beta: bool) -> None:
         logger.info("Settings changes detected, restarting overlay")
         stop_overlay()
         start_overlay()
+
+        
+def debugconsole():
+    """
+    Print stuff
+    """
+    start_overlay()
+
+    cl = edmcoverlay.Overlay()
+
+    while True:
+        line = sys.stdin.readline().strip()
+        cl.send_message("msg", line, "red", 100, 100)
+
+        
+if __name__ == "__main__":
+    debugconsole()

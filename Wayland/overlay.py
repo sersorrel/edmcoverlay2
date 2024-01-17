@@ -3,6 +3,7 @@ import configparser
 import signal, sys
 import logging
 from pathlib import Path
+import threading
 
 from math import pi
 
@@ -19,12 +20,28 @@ gi.require_version('Gtk4LayerShell', '1.0')
 from gi.repository import Gtk, Gdk, GLib, Gio
 from gi.repository import Gtk4LayerShell as LayerShell
 
+from socket_listener import ThreadedTCPServer, TCPStreamHandler
+
+class Messages(object):
+    _msg_lock = threading.RLock()
+    _msgs = []
+
+    def add_message(self, msg):
+        with self._msg_lock:
+            self._msgs.append(msg)
+
+    def get_messages(self):
+        with self._msg_lock:
+            for message in self._msgs:
+                yield message
+
 class WaylandOverlay(object):
-    def __init__(self, app: Gtk.Application, width: int, height: int):
+    def __init__(self, app: Gtk.Application, width: int, height: int, messages: Messages):
         self._width = width
         self._height = height
         self._app = app
         self._app.connect('activate', self.on_activate)
+        self._messages = messages
         self._angle = 0 
 
     def on_activate(self, app):
@@ -65,9 +82,10 @@ class WaylandOverlay(object):
 
     def refresh_screen(self):
         logging.debug('refresh')
+        logging.info(f'# of msgs: {len(list(self._messages.get_messages()))}')
         self._drawing.queue_draw()
         return True
-
+    
     def _draw(self, da: Gtk.DrawingArea, ctx: cairo.Context, width, height):
         """
         This is the draw function, that will be called every time `queue_draw` is
@@ -107,12 +125,6 @@ class WaylandOverlay(object):
         ctx.line_to(xc, yc)
         ctx.stroke()
         
-    def _on_mouse_pressed(self, da, event, *data):
-        """
-        This is called when the mouse is pressed
-        """
-        logging('The mouse was pressed!')
-
         
 def signal_handler(sig, frame):
     logging.info(f'edmcoverlay2: SIGINT/SIGTERM, exiting')
@@ -125,8 +137,17 @@ if __name__ == '__main__':
     signal.signal(signal.SIGINT, signal_handler)
     #Kill
     signal.signal(signal.SIGTERM, signal_handler)
-    
+
+    messages = Messages()
     app = Gtk.Application(application_id='edmcoverlay.overlay')
-    overlay = WaylandOverlay(app, 800, 800)
+    overlay = WaylandOverlay(app, 800, 800, messages)
     
-    app.run(None)
+    server = ThreadedTCPServer(('localhost', 5010), TCPStreamHandler.Creator(messages.add_message))
+    with server:
+        server_thread = threading.Thread(target=server.serve_forever)
+        # Exit the server thread when the main thread terminates
+        server_thread.daemon = True
+        server_thread.start()
+        logging.info(f'Server loop running in thread: {server_thread.name}')
+
+        app.run(None)
