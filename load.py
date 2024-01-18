@@ -33,8 +33,8 @@ height_var: tk.IntVar
 
 def find_overlay_binary() -> Path:
     our_directory = Path(__file__).resolve().parent
-    if environ['XDG_SESSION_TYPE'] == 'wayland':
-        overlay_binary = our_directory / 'Wayland' / 'overlay.py'
+    if environ.get('XDG_SESSION_TYPE', 'X11') == 'wayland':
+        overlay_binary = our_directory / 'Wayland' / 'main.py'
     else:
         overlay_binary = our_directory / 'overlay'
     if not overlay_binary.exists():

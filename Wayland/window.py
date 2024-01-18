@@ -1,6 +1,4 @@
 #!/usr/bin/env python
-import configparser
-import signal
 import logging
 from pathlib import Path
 import threading
@@ -20,46 +18,24 @@ gi.require_version('Gtk4LayerShell', '1.0')
 from gi.repository import Gtk, Gdk, GLib, Gio
 from gi.repository import Gtk4LayerShell as LayerShell
 
-from socket_listener import ThreadedTCPServer, TCPStreamHandler
+from messages import Messages
 
-class Messages(object):
-    class RepeatTimer(threading.Timer):
-        def run(self):
-            while not self.finished.wait(self.interval):
-                self.function(*self.args, **self.kwargs)
-
-    def __init__(self):
-        self._msg_lock = threading.RLock()
-        self._msgs = []
-        self._timer = self.RepeatTimer(1, self.tick_ttls)
-        self._timer.start()
-
-    def stop_timer(self):
-        self._timer.cancel()
-
-    def add_message(self, msg):
-        with self._msg_lock:
-            self._msgs.append(msg)
-
-    def get_messages(self):
-        with self._msg_lock:
-            for message in self._msgs:
-                yield message
-
-    def tick_ttls(self):
-        with self._msg_lock:
-            for message in self._msgs:
-                logging.info(message)
-
-class WaylandOverlay(object):
-    def __init__(self, app: Gtk.Application, width: int, height: int, messages: Messages):
+class WaylandOverlayWindow(object):
+    def __init__(self, app: Gtk.Application, width: int, height: int):
         self._width = width
         self._height = height
         self._app = app
         self._app.connect('activate', self._populate_widgets_on_activate)
-        self._messages = messages
         self._angle = 0 
 
+    @property
+    def messages(self):
+        return self._messages
+
+    @messages.setter
+    def messages(self, messages: Messages):
+        self._messages = messages
+        
     def close(self):
         self._window.close()
         
@@ -147,33 +123,3 @@ class WaylandOverlay(object):
         ctx.arc(xc, yc, radius, angle2, angle2)
         ctx.line_to(xc, yc)
         ctx.stroke()
-        
-        
-if __name__ == '__main__':
-    logging.basicConfig(format='%(levelname)s:%(lineno)d:\t%(message)s', level=logging.INFO)
-
-    messages = Messages()
-    app = Gtk.Application(application_id='edmcoverlay.overlay')
-    overlay = WaylandOverlay(app, 800, 800, messages)
-    
-    server = ThreadedTCPServer(('localhost', 5010), TCPStreamHandler.Creator(messages.add_message))
-
-    def signal_handler(sig, frame):
-        logging.info(f'edmcoverlay2: SIGINT/SIGTERM, exiting')
-        server.shutdown()
-        overlay.close()
-        messages.stop_timer()
-        
-    #KeyboardInterrupt
-    signal.signal(signal.SIGINT, signal_handler)
-    #Kill
-    signal.signal(signal.SIGTERM, signal_handler)
-    
-    with server:
-        server_thread = threading.Thread(target=server.serve_forever)
-        # Exit the server thread when the main thread terminates
-        server_thread.daemon = True
-        server_thread.start()
-        logging.info(f'Server loop running in thread: {server_thread.name}')
-    
-        app.run(None)
