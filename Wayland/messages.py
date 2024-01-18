@@ -9,7 +9,7 @@ class Messages(object):
 
     def __init__(self):
         self._msg_lock = threading.RLock()
-        self._msgs = []
+        self._msgs = {}
         self._timer = self.RepeatTimer(1, self.tick_ttls)
         self._timer.start()
 
@@ -18,14 +18,16 @@ class Messages(object):
 
     def add_message(self, msg):
         with self._msg_lock:
-            self._msgs.append(msg)
+            self._msgs[msg['id']] = msg
 
     def get_messages(self):
         with self._msg_lock:
-            for message in self._msgs:
+            for _, message in self._msgs.items():
                 yield message
 
     def tick_ttls(self):
         with self._msg_lock:
-            for message in self._msgs:
-                logging.info(message)
+            for message_id in list(self._msgs.keys()):
+                self._msgs[message_id]['ttl'] -= 1
+                if self._msgs[message_id]['ttl'] <= 0:
+                    self._msgs.pop(message_id)
