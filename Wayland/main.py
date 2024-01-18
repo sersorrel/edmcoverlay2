@@ -85,7 +85,7 @@ if __name__ == '__main__':
     args = get_args()
     
     logging.basicConfig(
-        format='%(levelname)s:%(lineno)d:\t%(message)s',
+        format='%(levelname)s:%(filename)s:%(lineno)d:\t%(message)s',
         level=logging.DEBUG if args.verbose else logging.INFO)
     
     logging.debug(f'args: {args.id} {args.positional_parameters[2]} {args.positional_parameters[3]} {args.address} {args.port}')
