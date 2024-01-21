@@ -26,6 +26,7 @@ class Messages(object):
                 yield message
 
     def tick_ttls(self):
+        logging.debug(f'ttl tick')
         with self._msg_lock:
             for message_id in list(self._msgs.keys()):
                 self._msgs[message_id]['ttl'] -= 1

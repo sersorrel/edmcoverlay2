@@ -4,7 +4,7 @@ from pathlib import Path
 
 from config import appname
 
-plugin_name = Path(__file__).parent.name
+plugin_name = Path(__file__).parent.parent.name
 logger = logging.getLogger(f"{appname}.{plugin_name}")
 
 logger.debug("edmcoverlay2: lib loaded")

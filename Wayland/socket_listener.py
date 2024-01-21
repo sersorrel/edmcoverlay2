@@ -17,7 +17,8 @@ class TCPStreamHandler(socketserver.StreamRequestHandler):
 
     def handle(self):
         self.data = self.rfile.readline().strip()
-        logging.debug(json.loads(self.data))
+        if self.data:
+            logging.debug(json.loads(self.data))
         if self.func is not None:
             self.func(json.loads(self.data))
     

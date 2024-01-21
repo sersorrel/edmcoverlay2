@@ -7,6 +7,7 @@ from pathlib import Path
 from subprocess import Popen
 import tkinter as tk
 from tkinter import ttk
+import socket
 
 from config import appname, config
 import myNotebook as nb
@@ -22,7 +23,7 @@ base_dir = Path(__file__).parent
 logger.debug("edmcoverlay2: loading plugin, we are: %s", repr(base_dir))
 edmcoverlay = importlib.import_module(base_dir.name)
 logger.debug("edmcoverlay2: got lib: %s", repr(edmcoverlay))
-logger.debug("edmcoverlay2: got internal lib: %s", repr(edmcoverlay._edmcoverlay))
+logger.debug("edmcoverlay2: got internal lib: %s", repr(edmcoverlay.edmcoverlay))
 
 overlay_process: Popen = None
 xpos_var: tk.IntVar
@@ -45,12 +46,28 @@ def find_overlay_binary() -> Path:
 
 def start_overlay():
     global overlay_process
+
+    if environ.get('XDG_SESSION_TYPE', 'X11') == 'wayland':
+        overlay_already_running = False
+        try:
+            connection = socket.socket()
+            connection.connect(('localhost', 5010))
+            overlay_already_running = True
+            connection.close()
+        except ConnectionRefusedError:
+            overlay_already_running = False
+            connection.close()
+        if overlay_already_running:
+            overlay_process = None
+            logger.info("edmcoverlay2: not starting overlay, already running")
+            return
+        
     if not overlay_process:
         logger.info("edmcoverlay2: starting overlay")
-        xpos = int(config.get("edmcoverlay2_xpos") or 0)
-        ypos = int(config.get("edmcoverlay2_ypos") or 0)
-        width = int(config.get("edmcoverlay2_width") or 1920)
-        height = int(config.get("edmcoverlay2_height") or 1080)
+        xpos = config.get_int("edmcoverlay2_xpos") or 0
+        ypos = config.get_int("edmcoverlay2_ypos") or 0
+        width = config.get_int("edmcoverlay2_width") or 1920
+        height = config.get_int("edmcoverlay2_height") or 1080
         overlay_process = Popen([find_overlay_binary(), str(xpos), str(ypos), str(width), str(height)])
     else:
         logger.warning("edmcoverlay2: not starting overlay, already running")
@@ -85,16 +102,17 @@ def journal_entry(cmdr, is_beta, system, station, entry, state):
 def plugin_stop():
     global overlay_process
     logger.info("edmcoverlay2: exiting plugin")
-    edmcoverlay._edmcoverlay._the_overlay._stop()
+    if environ.get('XDG_SESSION_TYPE', 'X11') == 'X11':
+        edmcoverlay.edmcoverlay._the_overlay._stop()
     stop_overlay()
 
 
 def plugin_prefs(parent: nb.Notebook, cmdr: str, is_beta: bool) -> nb.Frame:
     global xpos_var, ypos_var, width_var, height_var
-    xpos_var = tk.IntVar(value=int(config.get("edmcoverlay2_xpos") or 0))
-    ypos_var = tk.IntVar(value=int(config.get("edmcoverlay2_ypos") or 0))
-    width_var = tk.IntVar(value=int(config.get("edmcoverlay2_width") or 1920))
-    height_var = tk.IntVar(value=int(config.get("edmcoverlay2_height") or 1080))
+    xpos_var = tk.IntVar(value=config.get_int("edmcoverlay2_xpos") or 0)
+    ypos_var = tk.IntVar(value=config.get_int("edmcoverlay2_ypos") or 0)
+    width_var = tk.IntVar(value=config.get_int("edmcoverlay2_width") or 1920)
+    height_var = tk.IntVar(value=config.get_int("edmcoverlay2_height") or 1080)
     frame = nb.Frame(parent)
     frame.columnconfigure(0, weight=1)
     PAD_X = 10
@@ -143,7 +161,7 @@ def prefs_changed(cmdr: str, is_beta: bool) -> None:
             logger.warning("Bad config value for %s: %r", name, val)
         else:
             try:
-                old_val = int(config.get(f"edmcoverlay2_{name}"))
+                old_val = config.get_int(f"edmcoverlay2_{name}")
             except (TypeError, ValueError):
                 pass
             else:
