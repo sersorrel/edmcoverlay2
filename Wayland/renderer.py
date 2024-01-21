@@ -1,5 +1,7 @@
 import logging
 
+from math import pi
+
 import cairo
 import gi
 gi.require_version('Pango', '1.0')
@@ -29,12 +31,44 @@ class MessageRenderer(object):
         self._colors['black'].parse('#000000')
 
     def draw_message(self, ctx: cairo.Context, message: dict):
-        self.draw_text(ctx, message)
+        if 'shape' in message:
+            self._draw_shape(
+                ctx,
+                message)
+        if 'marker' in message:
+            self.draw_marker(
+                ctx,
+                message['color'],
+                message['marker'],
+                message['x'],
+                message['y'])
+        if 'text' in message:
+            self._draw_text(
+                ctx,
+                message)
 
-    def draw_text(self, ctx: cairo.Context, message: dict):
-        self._draw_text(ctx, message['size'], message['color'], message['text'], message['x'], message['y'])
+    def _draw_text(self, ctx: cairo.Context, message: dict):
+        self.draw_text(ctx, message['size'], message['color'], message['text'], message['x'], message['y'])
 
-    def _draw_text(self, ctx: cairo.Context, fontsize: str, fontcolor: str, text: str, x: int, y: int):
+    def _draw_shape(self, ctx: cairo.Context, message: dict):
+        if message['shape'] == 'rect':
+            self.draw_rectangle(
+                ctx,
+                message.get('color', None),
+                message.get('fill', None),
+                message['x'],
+                message['y'],
+                message['w'],
+                message['h'])
+        elif message['shape'] == 'vect':
+            self.draw_vector(
+                ctx,
+                message.get('color', 'green'),
+                message['vector'])
+        else:
+            logging.error(f'unknown shape: {message}')
+    
+    def draw_text(self, ctx: cairo.Context, fontsize: str, fontcolor: str, text: str, x: int, y: int):
         if not text:
             return
 
@@ -44,7 +78,7 @@ class MessageRenderer(object):
 
         rgba = self._get_color(fontcolor)
         if rgba:
-            logging.debug(f'text draw color: {rgba.red} {rgba.green} {rgba.blue} {rgba.alpha}')
+            logging.debug(f'color: {rgba.red} {rgba.green} {rgba.blue} {rgba.alpha}')
             ctx.set_source_rgba(rgba.red, rgba.green, rgba.blue, rgba.alpha)
         else:
             ctx.set_source_rgba(0, 1, 0, 1)
@@ -55,82 +89,93 @@ class MessageRenderer(object):
         layout.set_font_description(size)
         ctx.move_to(x, y)
         PangoCairo.show_layout(ctx, layout)
-    
-    # def draw_marker(self, ctx: cairo.Context, message: dict):
-    #     if not marker.Color:
-    #         return
 
-    #     brush = self._get_color(marker.Color)
-    #     if not brush:
-    #         return
+    def draw_rectangle(self, ctx: cairo.Context, color: str, fill: str, x: int, y: int, width: int, height: int):
+        rgba = self._get_color(color)
+        if rgba:
+            logging.debug(f'color: {rgba.red} {rgba.green} {rgba.blue} {rgba.alpha}')
+            ctx.set_source_rgba(rgba.red, rgba.green, rgba.blue, rgba.alpha)
+            ctx.rectangle(x, y, width, height)
+            ctx.stroke()
 
-    #     ctx.set_source(brush)
-    #     ctx.set_line_width(1.0)
+        rgba = self._get_color(fill)
+        if rgba:
+            logging.debug(f'fill: {rgba.red} {rgba.green} {rgba.blue} {rgba.alpha}')
+            ctx.set_source_rgba(rgba.red, rgba.green, rgba.blue, rgba.alpha)
+            ctx.set_line_width(1)
+            ctx.rectangle(x, y, width, height)
+            ctx.fill()
 
-    #     if marker.Marker == 'cross':
-    #         # draw 2 lines
-    #         ctx.move_to(marker.X - 3, marker.Y - 3)
-    #         ctx.line_to(marker.X + 3, marker.Y + 3)
-    #         ctx.stroke()
+    #remember that vector point can include marker and text 
+    def draw_vector(self, ctx: cairo.Context, color: str, points: list):
+        if not points:
+            return
 
-    #         ctx.move_to(marker.X + 3, marker.Y - 3)
-    #         ctx.line_to(marker.X - 3, marker.Y + 3)
-    #         ctx.stroke()
+        ctx.move_to(points[0]['x'], points[0]['y'])
 
-    #     elif marker.Marker == 'circle':
-    #         circle_bounds = (marker.X - 4, marker.Y - 4, 8, 8)
-    #         ctx.arc(circle_bounds[0] + circle_bounds[2] / 2, circle_bounds[1] + circle_bounds[3] / 2,
-    #                min(circle_bounds[2], circle_bounds[3]) / 2, 0, 2 * 3.14159)
-    #         ctx.stroke()
+        rgba = self._get_color(color)
+        if rgba:
+            logging.debug(f'color: {rgba.red} {rgba.green} {rgba.blue} {rgba.alpha}')
+            ctx.set_source_rgba(rgba.red, rgba.green, rgba.blue, rgba.alpha)
+        else:
+            logging.error(f'no color: {rgba.red} {rgba.green} {rgba.blue} {rgba.alpha}')
+            ctx.set_source_rgba(0, 1, 0, 1)
 
-    # def draw_vector_line(self, brush, start, end, ctx):
-    #     if not brush:
-    #         return
+        for point in points:
+            ctx.line_to(point['x'], point['y'])
+            
+            if 'marker' in point:
+                ctx.save()
+                self.draw_marker(
+                    ctx,
+                    point.get('color', color),
+                    point['marker'],
+                    point['x']+2,
+                    point['y']+7)
+                ctx.restore()
+            if 'text' in point:
+                ctx.save()
+                self.draw_text(
+                    ctx,
+                    "normal",
+                    point.get('color', color),
+                    point['text'],
+                    point['x']+2,
+                    point['y']+7)
+                ctx.restore()
+        # inside the loop?
+        ctx.stroke()
 
-    #     ctx.set_source(brush)
-    #     ctx.set_line_width(1.0)
-    #     ctx.move_to(start.X, start.Y)
-    #     ctx.line_to(end.X, end.Y)
-    #     ctx.stroke()
+    def draw_marker(self, ctx: cairo.Context, color: str, marker:str, x: int, y: int):
+        if not color:
+            return
+        
+        rgba = self._get_color(color)
+        if rgba:
+            logging.debug(f'color: {rgba.red} {rgba.green} {rgba.blue} {rgba.alpha}')
+            ctx.set_source_rgba(rgba.red, rgba.green, rgba.blue, rgba.alpha)
+        else:
+            ctx.set_source_rgba(0, 1, 0, 1)
 
-    # def draw_vector(self, start, erase, ctx):
-    #     # draw first point
-    #     if not start.Vector or len(start.Vector) < 1:
-    #         return
+        ctx.set_line_width(1.0)
 
-    #     last = start.Vector[0]
-
-    #     for current in start.Vector[1:]:
-    #         brush = self._get_color(start.Color)
-    #         self.draw_vector_line(brush, last, current, ctx)
-    #         self.draw_marker(last, ctx)
-    #         self._draw_text_ex('normal', last.Color, last.Text, last.X + 2, last.Y + 7, ctx)
-    #         last = current
-
-    #     # draw last marker
-    #     self.draw_marker(last, ctx)
-    #     self._draw_text_ex('normal', last.Color, last.Text, last.X + 2, last.Y + 7, ctx)
-
-    # def draw_shape(self, g, ctx):
-    #     if g.Shape == 'rect':
-    #         rect_bounds = (g.X, g.Y, g.W, g.H)
-    #         fill = self._get_color(g.Fill)
-    #         if fill:
-    #             ctx.set_source(fill)
-    #             ctx.rectangle(rect_bounds[0], rect_bounds[1], rect_bounds[2], rect_bounds[3])
-    #             ctx.fill_preserve()
-
-    #         rgba = self._get_color(g.Color)
-    #         if rgba:
-    #             ctx.set_source(rgba)
-    #             ctx.set_line_width(1.0)
-    #             ctx.rectangle(rect_bounds[0], rect_bounds[1], rect_bounds[2], rect_bounds[3])
-    #             ctx.stroke()
-
-    #     elif g.Shape == 'vect':
-    #         self.draw_vector(g, False, ctx)
+        if marker == 'cross':
+            ctx.move_to(x-3, y-3)
+            ctx.line_to(x+3, y+3)
+            
+            ctx.move_to(x+3, y-3)
+            ctx.line_to(x-3, y+3)
+            ctx.stroke()
+        elif marker == 'circle':
+            ctx.arc(x, y, 8, 0, 2*pi)
+            ctx.stroke()
+        else:
+            logging.error(f'unknown marker: {marker}')
 
     def _get_color(self, color):
+        if color is None or color == '' or color == '#':
+            return None
+        
         rgba = self._colors.get(color)
         if not rgba:
             try:
