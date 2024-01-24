@@ -29,7 +29,7 @@ class Overlay(object):
         self._overlay_window = WaylandOverlayWindow(self._app, self._width, self._height)
         self._overlay_window.messages = self._messages
     
-        self._server = ThreadedTCPServer((self._hostname, self._port), TCPStreamHandler.Creator(self._messages.add_message))
+        self._server = ThreadedTCPServer((self._hostname, self._port), TCPStreamHandler.Creator(self._messages.add_messages))
 
     def start(self, args=None):
         with self._server:

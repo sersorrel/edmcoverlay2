@@ -16,20 +16,24 @@ class TCPStreamHandler(socketserver.StreamRequestHandler):
         return _HandlerCreator
 
     def handle(self):
-        self.data = self.rfile.readline().strip()
-        if self.data:
-            logging.debug(json.loads(self.data))
+        lines = []
+        while self.rfile.peek():
+            self.data = self.rfile.readline().strip()
+            if self.data:
+                logging.debug(json.loads(self.data))
+            lines.append(json.loads(self.data))
         if self.func is not None:
-            self.func(json.loads(self.data))
+            self.func(lines)
     
 class MyTCPHandler(socketserver.StreamRequestHandler):
     """
     The request handler class for debugging.
     """
     def handle(self):
-        self.data = self.rfile.readline().strip()
-        logging.info(f'{self.client_address[0]} wrote:')
-        logging.info(json.loads(self.data))
+        while self.rfile.peek():
+            self.data = self.rfile.readline().strip()
+            logging.info(f'{self.client_address[0]} wrote:')
+            logging.info(json.loads(self.data))
 
 class ThreadedTCPServer(socketserver.ThreadingMixIn, socketserver.TCPServer):
     pass
@@ -47,3 +51,5 @@ if __name__ == "__main__":
         server_thread.daemon = True
         server_thread.start()
         logging.info(f'Server loop running in thread: {server_thread.name}')
+        while True:
+            pass

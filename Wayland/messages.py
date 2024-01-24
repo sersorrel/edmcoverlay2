@@ -20,6 +20,11 @@ class Messages(object):
         with self._msg_lock:
             self._msgs[msg['id']] = msg
 
+    def add_messages(self, msgs: list):
+        with self._msg_lock:
+            for msg in msgs:
+                self._msgs[msg['id']] = msg
+
     def get_messages(self):
         with self._msg_lock:
             for _, message in self._msgs.items():
