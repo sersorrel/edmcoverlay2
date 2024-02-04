@@ -2,6 +2,10 @@
 
 [EDMC Overlay][] for Linux.
 
+**This program is no longer maintained!** You should instead use [this fork](https://github.com/pan-mroku/edmcoverlay2) maintained by @pan-mroku, which includes Wayland support and better font rendering.
+
+<details><summary>Previous README</summary>
+
 ## Installation
 
 - Clone the repo into your EDMC plugins directory
@@ -57,3 +61,5 @@ Copyright notices can be found in the relevant source files.
 [gason]: https://github.com/vivkin/gason
 [lib_netsockets]: https://github.com/pedro-vicente/lib_netsockets
 [X11 overlay]: https://gist.github.com/ericek111/774a1661be69387de846f5f5a5977a46
+
+</details>
